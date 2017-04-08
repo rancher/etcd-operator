@@ -1,0 +1,10 @@
+version: '2'
+services:
+  etcd-operator:
+    image: llparse/etcd-operator:dev
+    labels:
+      io.rancher.container.agent.role: environmentAdmin
+      io.rancher.container.create_agent: "true"
+      io.rancher.container.pull_image: always
+      io.rancher.scheduler.affinity:container_label_ne: io.rancher.stack_service.name=$${stack_name}/$${service_name}
+    network_mode: bridge

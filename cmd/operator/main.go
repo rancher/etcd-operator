@@ -52,6 +52,7 @@ var (
 	awsConfig        string
 	s3Bucket         string
 	gcInterval       time.Duration
+	orchestrator     string
 
 	chaosLevel int
 
@@ -77,31 +78,39 @@ func init() {
 	flag.IntVar(&chaosLevel, "chaos-level", -1, "DO NOT USE IN PRODUCTION - level of chaos injected into the etcd clusters created by the operator.")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.DurationVar(&gcInterval, "gc-interval", 10*time.Minute, "GC interval")
+	flag.StringVar(&orchestrator, "orchestrator", "kubernetes", "Orchestrator platform - 'kubernetes' or 'rancher'.")
 	flag.Parse()
 
-	// Workaround for watching TPR resource.
-	restCfg, err := k8sutil.InClusterConfig()
-	if err != nil {
-		panic(err)
+	switch orchestrator {
+	case "k8s":
+		fallthrough
+	case "kubernetes":
+		// Workaround for watching TPR resource.
+		restCfg, err := k8sutil.InClusterConfig()
+		if err != nil {
+			panic(err)
+		}
+		controller.MasterHost = restCfg.Host
+		restcli, err := k8sutil.NewTPRClient()
+		if err != nil {
+			panic(err)
+		}
+		controller.KubeHttpCli = restcli.Client
+
+		namespace = os.Getenv("MY_POD_NAMESPACE")
+		if len(namespace) == 0 {
+			logrus.Fatalf("must set env MY_POD_NAMESPACE")
+		}
+		name = os.Getenv("MY_POD_NAME")
+		if len(name) == 0 {
+			logrus.Fatalf("must set env MY_POD_NAME")
+		}
+	case "rancher":
 	}
-	controller.MasterHost = restCfg.Host
-	restcli, err := k8sutil.NewTPRClient()
-	if err != nil {
-		panic(err)
-	}
-	controller.KubeHttpCli = restcli.Client
+
 }
 
 func main() {
-	namespace = os.Getenv("MY_POD_NAMESPACE")
-	if len(namespace) == 0 {
-		logrus.Fatalf("must set env MY_POD_NAMESPACE")
-	}
-	name = os.Getenv("MY_POD_NAME")
-	if len(name) == 0 {
-		logrus.Fatalf("must set env MY_POD_NAME")
-	}
-
 	c := make(chan os.Signal, 1)
 	signal.Notify(c)
 	go func() {

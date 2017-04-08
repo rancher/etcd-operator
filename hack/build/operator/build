@@ -31,6 +31,7 @@ GIT_SHA=`git rev-parse --short HEAD || echo "GitNotFound"`
 bin_dir="$(pwd)/_output/bin"
 mkdir -p ${bin_dir} || true
 
+glide install --strip-vendor
 
 ldKVPairs="github.com/coreos/etcd-operator/pkg/util/k8sutil.BackupImage=${IMAGE}"
 gitHash="github.com/coreos/etcd-operator/version.GitSHA=${GIT_SHA}"
