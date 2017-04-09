@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
-	"github.com/coreos/etcd-operator/pkg/garbagecollection"
+	"github.com/coreos/etcd-operator/pkg/k8s/garbagecollection"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
