@@ -84,12 +84,12 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	k8scontroller.MasterHost = restCfg.Host
+	controller.MasterHost = restCfg.Host
 	restcli, err := k8sutil.NewTPRClient()
 	if err != nil {
 		panic(err)
 	}
-	k8scontroller.KubeHttpCli = restcli.Client
+	controller.KubeHttpCli = restcli.Client
 }
 
 func main() {
@@ -173,17 +173,17 @@ func run(stop <-chan struct{}) {
 	startChaos(context.Background(), cfg.KubeCli, cfg.Namespace, chaosLevel)
 
 	for {
-		c := k8scontroller.New(cfg)
+		c := controller.New(cfg)
 		err := c.Run()
 		switch err {
-		case k8scontroller.ErrVersionOutdated:
+		case controller.ErrVersionOutdated:
 		default:
 			logrus.Fatalf("controller Run() ended with failure: %v", err)
 		}
 	}
 }
 
-func newControllerConfig() k8scontroller.Config {
+func newControllerConfig() controller.Config {
 	kubecli := k8sutil.MustNewKubeClient()
 
 	serviceAccount, err := getMyPodServiceAccount(kubecli)
@@ -191,7 +191,7 @@ func newControllerConfig() k8scontroller.Config {
 		logrus.Fatalf("fail to get my pod's service account: %v", err)
 	}
 
-	cfg := k8scontroller.Config{
+	cfg := controller.Config{
 		Namespace:      namespace,
 		ServiceAccount: serviceAccount,
 		PVProvisioner:  pvProvisioner,

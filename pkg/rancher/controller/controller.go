@@ -44,23 +44,6 @@ func New(client *rancher.RancherClient) *Controller {
 }
 
 func (c *Controller) Run() error {
-  col, err := c.rclient.Service.List(&rancher.ListOpts{})
-  if err != nil {
-    return err
-  }
-  c.logger.Infof("found %d services total", len(col.Data))
-  services := []*rancher.Service{}
-  for _, s := range col.Data {
-    if s.LaunchConfig != nil && s.LaunchConfig.Labels != nil {
-      c.logger.Infof("%s has launch config labels %+v", s.Name, s.LaunchConfig.Labels)
-      if _, ok := s.LaunchConfig.Labels["io.rancher.operator"]; ok {
-        c.logger.Info("Has operator key")
-        services = append(services, &s)
-      }
-    }
-  }
-  c.logger.Infof("found %d etcd services", len(services))
-
 	l, err := c.rclient.Project.List(&rancher.ListOpts{
 		Filters: map[string]interface{}{
 			"name": "swarm",
@@ -71,29 +54,57 @@ func (c *Controller) Run() error {
 		c.logger.Fatalf("Couldn't find swarm env")
 	}
 
-	c.logger.Infof("%+v", l.Data[0])
-	env := "1a103"
+  env := l.Data[0]
 
 	stack := NewStack("etcd", "managed by etcd operator")
-	c.CreateStack(env, stack)
+	c.CreateStack(env.Id, stack)
 	//c.logger.Infof("%+v", stack)
 
 	service := NewEtcdService("etcd", stack.Id)
-	c.CreateService(env, service)
+	c.CreateService(env.Id, service)
 	//c.logger.Infof("%+v", service)
 
-  t := time.NewTicker(8 * time.Second)
-  for _ = range t.C {
-    //c.logger.Infof("begin reconciliation on %d services", len(services))
-    for _, s := range services {
-      c.logger.Infof("reconciling (%s) %s", s.Id, s.Name)
-    }    
-  }
-	//container := NewEtcdContainer("etcd", service.Id)
-	//c.CreateContainer(env, container)
-	//c.logger.Infof("%+v", container)
+  c.periodicallyReconcile()
 
 	return err
+}
+
+func (c *Controller) periodicallyReconcile() {
+  c.reconcile()
+  t := time.NewTicker(8 * time.Second)
+  for _ = range t.C {
+    c.reconcile()
+  }
+}
+
+func (c *Controller) reconcile() {
+  services := c.findServices()
+  c.logger.Infof("begin reconciliation on %d services", len(services))
+  for _, s := range services {
+    c.logger.Infof("  reconciling (%s) %s", s.Id, s.Name)
+    //container := NewEtcdContainer("etcd", service.Id)
+    //c.CreateContainer(env.Id, container)
+    //c.logger.Infof("%+v", container)
+  }
+}
+
+func (c *Controller) findServices() []rancher.Service {
+  services := []rancher.Service{}
+  col, err := c.rclient.Service.List(&rancher.ListOpts{})
+  if err != nil {
+    return services
+  }
+  c.logger.Infof("found %d services total", len(col.Data))
+  for _, s := range col.Data {
+    if s.LaunchConfig != nil && s.LaunchConfig.Labels != nil {
+      if _, ok := s.LaunchConfig.Labels["io.rancher.operator"]; ok {
+        //c.logger.Infof("%s has launch config labels %+v", s.Name, s.LaunchConfig.Labels)
+        services = append(services, s)
+      }
+    }
+  }
+  c.logger.Infof("found %d etcd services", len(services))
+  return services
 }
 
 func NewStack(name string, desc string) *rancher.Stack {
@@ -153,23 +164,23 @@ func NewEtcdContainer(serviceName string, serviceID string) *rancher.Container {
 	}
 }
 
-func (c *Controller) CreateStack(env string, stack *rancher.Stack) {
-	c.create(env, "stack", stack)
+func (c *Controller) CreateStack(envId string, stack *rancher.Stack) {
+	c.create(envId, "stack", stack)
 }
-func (c *Controller) CreateService(env string, service *Service) {
-	c.create(env, "service", service)
+func (c *Controller) CreateService(envId string, service *Service) {
+	c.create(envId, "service", service)
 }
-func (c *Controller) CreateContainer(env string, container *rancher.Container) {
-	c.create(env, "container", container)
+func (c *Controller) CreateContainer(envId string, container *rancher.Container) {
+	c.create(envId, "container", container)
 }
 
-func (c *Controller) create(env string, otype string, createObj interface{}) error {
+func (c *Controller) create(envId string, otype string, createObj interface{}) error {
 	b, err := json.Marshal(createObj)
 	if err != nil {
 		return err
 	}
 
-	url := fmt.Sprintf("%s/projects/%s/%s", c.rclient.GetOpts().Url, env, otype)
+	url := fmt.Sprintf("%s/projects/%s/%s", c.rclient.GetOpts().Url, envId, otype)
 	req, err2 := http.NewRequest("POST", url, bytes.NewBuffer(b))
 	if err2 != nil {
 		return err2
