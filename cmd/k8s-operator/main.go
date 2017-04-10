@@ -28,10 +28,10 @@ import (
 	"github.com/coreos/etcd-operator/pkg/k8s/chaos"
 	"github.com/coreos/etcd-operator/pkg/k8s/controller"
 	"github.com/coreos/etcd-operator/pkg/k8s/garbagecollection"
+	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil/election"
+	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil/election/resourcelock"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil/election"
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil/election/resourcelock"
 	"github.com/coreos/etcd-operator/version"
 
 	"github.com/Sirupsen/logrus"

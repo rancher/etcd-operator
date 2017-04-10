@@ -37,8 +37,8 @@ gitHash="github.com/coreos/etcd-operator/version.GitSHA=${GIT_SHA}"
 
 go_ldflags="-X ${ldKVPairs} -X ${gitHash}"
 
-#go_build k8s-operator
-#go_build k8s-backup
+go_build k8s-operator
+go_build k8s-backup
 go_build rancher-operator
 #go_build rancher-backup
 

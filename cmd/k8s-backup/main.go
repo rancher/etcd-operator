@@ -22,8 +22,8 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/backup"
 	"github.com/coreos/etcd-operator/pkg/backup/env"
+	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/spec"
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/version"
 
 	"github.com/Sirupsen/logrus"

@@ -15,7 +15,7 @@
 package garbagecollection
 
 import (
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil"
 
 	"github.com/Sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"

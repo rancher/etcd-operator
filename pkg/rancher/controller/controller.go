@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/coreos/etcd-operator/pkg/cluster"
+	"github.com/coreos/etcd-operator/pkg/k8s/cluster"
 	rancher "github.com/rancher/go-rancher/v2"
 )
 
@@ -54,7 +54,7 @@ func (c *Controller) Run() error {
 		c.logger.Fatalf("Couldn't find swarm env")
 	}
 
-  env := l.Data[0]
+	env := l.Data[0]
 
 	stack := NewStack("etcd", "managed by etcd operator")
 	c.CreateStack(env.Id, stack)
@@ -64,47 +64,47 @@ func (c *Controller) Run() error {
 	c.CreateService(env.Id, service)
 	//c.logger.Infof("%+v", service)
 
-  c.periodicallyReconcile()
+	c.periodicallyReconcile()
 
 	return err
 }
 
 func (c *Controller) periodicallyReconcile() {
-  c.reconcile()
-  t := time.NewTicker(8 * time.Second)
-  for _ = range t.C {
-    c.reconcile()
-  }
+	c.reconcile()
+	t := time.NewTicker(8 * time.Second)
+	for _ = range t.C {
+		c.reconcile()
+	}
 }
 
 func (c *Controller) reconcile() {
-  services := c.findServices()
-  c.logger.Infof("begin reconciliation on %d services", len(services))
-  for _, s := range services {
-    c.logger.Infof("  reconciling (%s) %s", s.Id, s.Name)
-    //container := NewEtcdContainer("etcd", service.Id)
-    //c.CreateContainer(env.Id, container)
-    //c.logger.Infof("%+v", container)
-  }
+	services := c.findServices()
+	c.logger.Infof("begin reconciliation on %d services", len(services))
+	for _, s := range services {
+		c.logger.Infof("  reconciling (%s) %s", s.Id, s.Name)
+		//container := NewEtcdContainer("etcd", service.Id)
+		//c.CreateContainer(env.Id, container)
+		//c.logger.Infof("%+v", container)
+	}
 }
 
 func (c *Controller) findServices() []rancher.Service {
-  services := []rancher.Service{}
-  col, err := c.rclient.Service.List(&rancher.ListOpts{})
-  if err != nil {
-    return services
-  }
-  c.logger.Infof("found %d services total", len(col.Data))
-  for _, s := range col.Data {
-    if s.LaunchConfig != nil && s.LaunchConfig.Labels != nil {
-      if _, ok := s.LaunchConfig.Labels["io.rancher.operator"]; ok {
-        //c.logger.Infof("%s has launch config labels %+v", s.Name, s.LaunchConfig.Labels)
-        services = append(services, s)
-      }
-    }
-  }
-  c.logger.Infof("found %d etcd services", len(services))
-  return services
+	services := []rancher.Service{}
+	col, err := c.rclient.Service.List(&rancher.ListOpts{})
+	if err != nil {
+		return services
+	}
+	c.logger.Infof("found %d services total", len(col.Data))
+	for _, s := range col.Data {
+		if s.LaunchConfig != nil && s.LaunchConfig.Labels != nil {
+			if _, ok := s.LaunchConfig.Labels["io.rancher.operator"]; ok {
+				//c.logger.Infof("%s has launch config labels %+v", s.Name, s.LaunchConfig.Labels)
+				services = append(services, s)
+			}
+		}
+	}
+	c.logger.Infof("found %d etcd services", len(services))
+	return services
 }
 
 func NewStack(name string, desc string) *rancher.Stack {
@@ -123,19 +123,19 @@ func configLabel(key string) string {
 
 func NewEtcdService(name string, stackID string) *Service {
 	return &Service{
-		Description:  "managed by etcd operator",
+		Description: "managed by etcd operator",
 		LaunchConfig: &rancher.LaunchConfig{
 			ImageUuid: "docker:quay.io/coreos/etcd:v3.1.5",
 			Labels: map[string]interface{}{
 				"io.rancher.scheduler.affinity:container_label_ne": configLabel("name") + "=" + name,
-        "io.rancher.operator":                              "etcd",
+				"io.rancher.operator":                              "etcd",
 				configLabel("name"):                                name,
 				configLabel("scale"):                               "3",
 				configLabel("version"):                             "v3.1.5",
 			},
-      NetworkMode: "bridge",
+			NetworkMode: "bridge",
 		},
-    Name:          name,
+		Name:          name,
 		Scale:         0,
 		StackId:       stackID,
 		StartOnCreate: true,
@@ -151,7 +151,7 @@ func NewEtcdContainer(serviceName string, serviceID string) *rancher.Container {
 		Environment: map[string]interface{}{"ETCD_NAME": name},
 		ImageUuid:   "docker:quay.io/coreos/etcd:v3.1.5",
 		Labels: map[string]interface{}{
-      "io.rancher.operator":                              "etcd",
+			"io.rancher.operator":                              "etcd",
 			"io.rancher.operator.etcd.name":                    serviceName,
 			"io.rancher.scheduler.affinity:container_label_ne": "io.rancher.operator.etcd.name=" + serviceName,
 		},
@@ -211,77 +211,77 @@ func (c *Controller) create(envId string, otype string, createObj interface{}) e
 
 // TODO: replace with rancher.Service, once fixed
 type Service struct {
-  rancher.Resource
+	rancher.Resource
 
-  AccountId string `json:"accountId,omitempty" yaml:"account_id,omitempty"`
+	AccountId string `json:"accountId,omitempty" yaml:"account_id,omitempty"`
 
-  AssignServiceIpAddress bool `json:"assignServiceIpAddress,omitempty" yaml:"assign_service_ip_address,omitempty"`
+	AssignServiceIpAddress bool `json:"assignServiceIpAddress,omitempty" yaml:"assign_service_ip_address,omitempty"`
 
-  CreateIndex int64 `json:"createIndex,omitempty" yaml:"create_index,omitempty"`
+	CreateIndex int64 `json:"createIndex,omitempty" yaml:"create_index,omitempty"`
 
-  Created string `json:"created,omitempty" yaml:"created,omitempty"`
+	Created string `json:"created,omitempty" yaml:"created,omitempty"`
 
-  CurrentScale int64 `json:"currentScale,omitempty" yaml:"current_scale,omitempty"`
+	CurrentScale int64 `json:"currentScale,omitempty" yaml:"current_scale,omitempty"`
 
-  Data map[string]interface{} `json:"data,omitempty" yaml:"data,omitempty"`
+	Data map[string]interface{} `json:"data,omitempty" yaml:"data,omitempty"`
 
-  Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 
-  ExternalId string `json:"externalId,omitempty" yaml:"external_id,omitempty"`
+	ExternalId string `json:"externalId,omitempty" yaml:"external_id,omitempty"`
 
-  Fqdn string `json:"fqdn,omitempty" yaml:"fqdn,omitempty"`
+	Fqdn string `json:"fqdn,omitempty" yaml:"fqdn,omitempty"`
 
-  HealthState string `json:"healthState,omitempty" yaml:"health_state,omitempty"`
+	HealthState string `json:"healthState,omitempty" yaml:"health_state,omitempty"`
 
-  InstanceIds []string `json:"instanceIds,omitempty" yaml:"instance_ids,omitempty"`
+	InstanceIds []string `json:"instanceIds,omitempty" yaml:"instance_ids,omitempty"`
 
-  Kind string `json:"kind,omitempty" yaml:"kind,omitempty"`
+	Kind string `json:"kind,omitempty" yaml:"kind,omitempty"`
 
-  LaunchConfig *rancher.LaunchConfig `json:"launchConfig,omitempty" yaml:"launch_config,omitempty"`
+	LaunchConfig *rancher.LaunchConfig `json:"launchConfig,omitempty" yaml:"launch_config,omitempty"`
 
-  LbConfig *rancher.LbTargetConfig `json:"lbConfig,omitempty" yaml:"lb_config,omitempty"`
+	LbConfig *rancher.LbTargetConfig `json:"lbConfig,omitempty" yaml:"lb_config,omitempty"`
 
-  LinkedServices map[string]interface{} `json:"linkedServices,omitempty" yaml:"linked_services,omitempty"`
+	LinkedServices map[string]interface{} `json:"linkedServices,omitempty" yaml:"linked_services,omitempty"`
 
-  Metadata map[string]interface{} `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	Metadata map[string]interface{} `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 
-  Name string `json:"name,omitempty" yaml:"name,omitempty"`
+	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 
-  PublicEndpoints []rancher.PublicEndpoint `json:"publicEndpoints,omitempty" yaml:"public_endpoints,omitempty"`
+	PublicEndpoints []rancher.PublicEndpoint `json:"publicEndpoints,omitempty" yaml:"public_endpoints,omitempty"`
 
-  RemoveTime string `json:"removeTime,omitempty" yaml:"remove_time,omitempty"`
+	RemoveTime string `json:"removeTime,omitempty" yaml:"remove_time,omitempty"`
 
-  Removed string `json:"removed,omitempty" yaml:"removed,omitempty"`
+	Removed string `json:"removed,omitempty" yaml:"removed,omitempty"`
 
-  RetainIp bool `json:"retainIp,omitempty" yaml:"retain_ip,omitempty"`
+	RetainIp bool `json:"retainIp,omitempty" yaml:"retain_ip,omitempty"`
 
-  Scale int64 `json:"scale" yaml:"scale"`
+	Scale int64 `json:"scale" yaml:"scale"`
 
-  ScalePolicy *rancher.ScalePolicy `json:"scalePolicy,omitempty" yaml:"scale_policy,omitempty"`
+	ScalePolicy *rancher.ScalePolicy `json:"scalePolicy,omitempty" yaml:"scale_policy,omitempty"`
 
-  SecondaryLaunchConfigs []rancher.SecondaryLaunchConfig `json:"secondaryLaunchConfigs,omitempty" yaml:"secondary_launch_configs,omitempty"`
+	SecondaryLaunchConfigs []rancher.SecondaryLaunchConfig `json:"secondaryLaunchConfigs,omitempty" yaml:"secondary_launch_configs,omitempty"`
 
-  SelectorContainer string `json:"selectorContainer,omitempty" yaml:"selector_container,omitempty"`
+	SelectorContainer string `json:"selectorContainer,omitempty" yaml:"selector_container,omitempty"`
 
-  SelectorLink string `json:"selectorLink,omitempty" yaml:"selector_link,omitempty"`
+	SelectorLink string `json:"selectorLink,omitempty" yaml:"selector_link,omitempty"`
 
-  StackId string `json:"stackId,omitempty" yaml:"stack_id,omitempty"`
+	StackId string `json:"stackId,omitempty" yaml:"stack_id,omitempty"`
 
-  StartOnCreate bool `json:"startOnCreate,omitempty" yaml:"start_on_create,omitempty"`
+	StartOnCreate bool `json:"startOnCreate,omitempty" yaml:"start_on_create,omitempty"`
 
-  State string `json:"state,omitempty" yaml:"state,omitempty"`
+	State string `json:"state,omitempty" yaml:"state,omitempty"`
 
-  System bool `json:"system,omitempty" yaml:"system,omitempty"`
+	System bool `json:"system,omitempty" yaml:"system,omitempty"`
 
-  Transitioning string `json:"transitioning,omitempty" yaml:"transitioning,omitempty"`
+	Transitioning string `json:"transitioning,omitempty" yaml:"transitioning,omitempty"`
 
-  TransitioningMessage string `json:"transitioningMessage,omitempty" yaml:"transitioning_message,omitempty"`
+	TransitioningMessage string `json:"transitioningMessage,omitempty" yaml:"transitioning_message,omitempty"`
 
-  TransitioningProgress int64 `json:"transitioningProgress,omitempty" yaml:"transitioning_progress,omitempty"`
+	TransitioningProgress int64 `json:"transitioningProgress,omitempty" yaml:"transitioning_progress,omitempty"`
 
-  Upgrade *rancher.ServiceUpgrade `json:"upgrade,omitempty" yaml:"upgrade,omitempty"`
+	Upgrade *rancher.ServiceUpgrade `json:"upgrade,omitempty" yaml:"upgrade,omitempty"`
 
-  Uuid string `json:"uuid,omitempty" yaml:"uuid,omitempty"`
+	Uuid string `json:"uuid,omitempty" yaml:"uuid,omitempty"`
 
-  Vip string `json:"vip,omitempty" yaml:"vip,omitempty"`
+	Vip string `json:"vip,omitempty" yaml:"vip,omitempty"`
 }

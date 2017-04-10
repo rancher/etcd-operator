@@ -25,10 +25,10 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/analytics"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
-	"github.com/coreos/etcd-operator/pkg/cluster"
+	"github.com/coreos/etcd-operator/pkg/k8s/cluster"
+	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"

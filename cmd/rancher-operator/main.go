@@ -26,7 +26,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/rancher/controller"
 	"github.com/coreos/etcd-operator/pkg/rancher/garbagecollection"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
-	"github.com/coreos/etcd-operator/pkg/util/rancherutil"
+	"github.com/coreos/etcd-operator/pkg/rancher/ranchutil"
 	"github.com/coreos/etcd-operator/version"
 	rancher "github.com/rancher/go-rancher/v2"
 
@@ -112,7 +112,7 @@ func main() {
 }
 
 func run() {
-	client := rancherutil.MustNewRancherClient()
+	client := ranchutil.MustNewRancherClient()
 
 	go periodicFullGC(client, gcInterval)
 
