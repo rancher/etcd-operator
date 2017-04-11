@@ -2,9 +2,10 @@ version: '2'
 services:
   etcd-operator:
     image: llparse/etcd-operator:dev
-    entrypoint: /usr/local/bin/etcd-rancher-operator
     command:
-    - -logtostderr=true
+    - rancher operator
+    - --analytics=false
+    - --gc-interval=30s
     labels:
       io.rancher.container.agent.role: environmentAdmin
       io.rancher.container.create_agent: "true"

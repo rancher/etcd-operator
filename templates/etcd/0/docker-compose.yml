@@ -1,0 +1,10 @@
+version: '2'
+services:
+  etcd:
+    image: quay.io/coreos/etcd
+    labels:
+      io.rancher.operator: etcd
+      io.rancher.operator.etcd.size: ${SIZE}
+      io.rancher.operator.etcd.version: ${VERSION}
+      io.rancher.operator.etcd.paused: ${PAUSED}
+      io.rancher.operator.etcd.antiaffinity: ${ANTIAFFINITY}
