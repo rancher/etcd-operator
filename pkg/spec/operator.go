@@ -17,10 +17,14 @@ type Operator struct {
   OptIn      bool
 }
 
+// Controller has a few key responsibilities:
+// 1. Watch for new/modified/deleted cluster configuration
+// 2. Perform reconciliation on each cluster
 type Controller interface {
   Run() error
 }
 
+// GarbageCollection deletes objects that no longer belong to any cluster.
 type GarbageCollection interface {
   FullyCollect() error
 }

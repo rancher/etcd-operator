@@ -6,7 +6,5 @@ docker run \
   -e CATTLE_ACCESS_KEY=$CATTLE_ACCESS_KEY \
   -e CATTLE_SECRET_KEY=$CATTLE_SECRET_KEY \
   -e CATTLE_ENVIRONMENT=$CATTLE_ENVIRONMENT \
-  --entrypoint=/usr/local/bin/etcd-rancher-operator \
     $IMAGE \
-      -logtostderr=true \
       $@

@@ -134,7 +134,7 @@ func main() {
 					{
 						Name:        "operator",
 						ShortName:   "o",
-						Description: "run the etcd operator",
+						Description: "run the etcd operator for kubernetes",
 						Flags: append(operatorFlags, []cli.Flag{
 							cli.StringFlag{
 								Name:   "name",
@@ -162,7 +162,7 @@ func main() {
 					{
 						Name:        "operator",
 						ShortName:   "o",
-						Description: "",
+						Description: "run the etcd operator for rancher",
 						Flags:       operatorFlags,
 						Action:      rancherOperator,
 					},

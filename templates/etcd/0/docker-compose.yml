@@ -8,3 +8,5 @@ services:
       io.rancher.operator.etcd.version: ${VERSION}
       io.rancher.operator.etcd.paused: ${PAUSED}
       io.rancher.operator.etcd.antiaffinity: ${ANTIAFFINITY}
+      io.rancher.service.selector.container: app=etcd
+    network_mode: bridge
