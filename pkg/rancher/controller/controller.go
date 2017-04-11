@@ -10,13 +10,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd-operator/pkg/k8s/cluster"
 	rancher "github.com/rancher/go-rancher/v2"
 )
 
 type Controller struct {
-	logger  *logrus.Entry
+	log  *log.Entry
 	hclient *http.Client
 	rclient *rancher.RancherClient
 
@@ -29,9 +29,9 @@ type Controller struct {
 	waitCluster sync.WaitGroup
 }
 
-func New(client *rancher.RancherClient) *Controller {
-	return &Controller{
-		logger: logrus.WithField("pkg", "controller"),
+func New(client *rancher.RancherClient) Controller {
+	return Controller{
+		log: log.WithField("pkg", "controller"),
 		hclient: &http.Client{
 			Timeout: 5 * time.Second,
 		},
@@ -43,7 +43,7 @@ func New(client *rancher.RancherClient) *Controller {
 	}
 }
 
-func (c *Controller) Run() error {
+func (c Controller) Run() error {
 	l, err := c.rclient.Project.List(&rancher.ListOpts{
 		Filters: map[string]interface{}{
 			"name": "swarm",
@@ -51,18 +51,16 @@ func (c *Controller) Run() error {
 	})
 
 	if len(l.Data) != 1 {
-		c.logger.Fatalf("Couldn't find swarm env")
+		c.log.Fatalf("Couldn't find swarm env")
 	}
 
 	env := l.Data[0]
 
 	stack := NewStack("etcd", "managed by etcd operator")
 	c.CreateStack(env.Id, stack)
-	//c.logger.Infof("%+v", stack)
 
 	service := NewEtcdService("etcd", stack.Id)
 	c.CreateService(env.Id, service)
-	//c.logger.Infof("%+v", service)
 
 	c.periodicallyReconcile()
 
@@ -75,16 +73,19 @@ func (c *Controller) periodicallyReconcile() {
 	for _ = range t.C {
 		c.reconcile()
 	}
+	panic("unreachable")
 }
 
 func (c *Controller) reconcile() {
+	c.log.Debugf("begin reconciliation")
+	defer c.log.Debugf("end reconciliation")
+
 	services := c.findServices()
-	c.logger.Infof("begin reconciliation on %d services", len(services))
 	for _, s := range services {
-		c.logger.Infof("  reconciling (%s) %s", s.Id, s.Name)
+		c.log.Infof("  reconciling (%s) %s", s.Id, s.Name)
 		//container := NewEtcdContainer("etcd", service.Id)
 		//c.CreateContainer(env.Id, container)
-		//c.logger.Infof("%+v", container)
+		//c.log.Infof("%+v", container)
 	}
 }
 
@@ -94,16 +95,16 @@ func (c *Controller) findServices() []rancher.Service {
 	if err != nil {
 		return services
 	}
-	c.logger.Infof("found %d services total", len(col.Data))
+	c.log.Debugf("found %d services total", len(col.Data))
 	for _, s := range col.Data {
 		if s.LaunchConfig != nil && s.LaunchConfig.Labels != nil {
 			if _, ok := s.LaunchConfig.Labels["io.rancher.operator"]; ok {
-				//c.logger.Infof("%s has launch config labels %+v", s.Name, s.LaunchConfig.Labels)
+				//c.log.Infof("%s has launch config labels %+v", s.Name, s.LaunchConfig.Labels)
 				services = append(services, s)
 			}
 		}
 	}
-	c.logger.Infof("found %d etcd services", len(services))
+	c.log.Debugf("found %d etcd services", len(services))
 	return services
 }
 
@@ -187,12 +188,12 @@ func (c *Controller) create(envId string, otype string, createObj interface{}) e
 	}
 	req.SetBasicAuth(c.rclient.GetOpts().AccessKey, c.rclient.GetOpts().SecretKey)
 
-	c.logger.Debugf("req: %+v", req)
+	c.log.Debugf("req: %+v", req)
 	resp, err3 := c.hclient.Do(req)
 	if err3 != nil {
 		return err3
 	}
-	c.logger.Debugf("resp: %+v", resp)
+	c.log.Debugf("resp: %+v", resp)
 
 	defer resp.Body.Close()
 	byteContent, err4 := ioutil.ReadAll(resp.Body)
@@ -206,6 +207,8 @@ func (c *Controller) create(envId string, otype string, createObj interface{}) e
 			return err5
 		}
 	}
+
+	c.log.Debugf("create(): %+v", createObj)
 	return nil
 }
 

@@ -95,8 +95,8 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-func New(cfg Config) *Controller {
-	return &Controller{
+func New(cfg Config) Controller {
+	return Controller{
 		logger: logrus.WithField("pkg", "controller"),
 
 		Config:     cfg,
@@ -106,7 +106,7 @@ func New(cfg Config) *Controller {
 	}
 }
 
-func (c *Controller) Run() error {
+func (c Controller) Run() error {
 	var (
 		watchVersion string
 		err          error
