@@ -5,11 +5,13 @@
   questions:
   - variable: SIZE
     label: Size
+    description: Number of Etcd members to create
     required: true
     default: 3
     type: int
   - variable: VERSION
     label: Version
+    description: Etcd binary version to run
     required: true
     default: 3.1.5
     type: enum
@@ -40,11 +42,13 @@
     - 3.0.0
   - variable: PAUSED
     label: Paused
+    description: Pause operator reconciliation (this may be toggled via service upgrade)
     required: true
     default: false
     type: boolean
   - variable: ANTIAFFINITY
-    label: AntiAffinity
+    label: Enforce Anti-Affinity
+    description: Prevent any two members of this cluster from being scheduled on a single host
     required: true
     default: true
     type: boolean
