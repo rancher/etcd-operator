@@ -15,14 +15,12 @@ type GC struct {
 	logger *logrus.Entry
 
 	client *rancher.RancherClient
-	env    string
 }
 
-func New(client *rancher.RancherClient, env string) *GC {
+func New(client *rancher.RancherClient) *GC {
 	return &GC{
 		logger: pkgLogger,
 		client: client,
-		env:    env,
 	}
 }
 

@@ -18,3 +18,5 @@ import:
 - package: golang.org/x/net
 - package: golang.org/x/time
 - package: github.com/rancher/go-rancher/v2
+- package: github.com/urfave/cli
+  version: v1.19.1

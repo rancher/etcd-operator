@@ -33,7 +33,7 @@ var (
 func Enable() {
 	mu.Lock()
 	defer mu.Unlock()
-	client = mustNewClient()
+	client = maybeNewClient()
 }
 
 func Disable() {
@@ -54,10 +54,11 @@ func send(e *ga.Event) {
 	c.Send(e)
 }
 
-func mustNewClient() *ga.Client {
+func maybeNewClient() *ga.Client {
 	client, err := ga.NewClient(id)
+	// error is ignored intentionally. we try to create cxns to GA in a best effort approach.
 	if err != nil {
-		panic(err)
+		return nil
 	}
 	return client
 }
