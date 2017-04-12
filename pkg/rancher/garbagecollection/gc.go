@@ -1,8 +1,9 @@
 package garbagecollection
 
 import (
+	"github.com/coreos/etcd-operator/pkg/rancher/ranchutil"
+
 	log "github.com/Sirupsen/logrus"
-	rancher "github.com/rancher/go-rancher/v2"
 )
 
 const (
@@ -14,12 +15,12 @@ var pkgLogger = log.WithField("pkg", "gc")
 type GC struct {
 	log *log.Entry
 
-	client *rancher.RancherClient
+	client *ranchutil.ContextAwareClient
 }
 
-func New(client *rancher.RancherClient) *GC {
+func New(client *ranchutil.ContextAwareClient) *GC {
 	return &GC{
-		log: pkgLogger,
+		log:    pkgLogger,
 		client: client,
 	}
 }

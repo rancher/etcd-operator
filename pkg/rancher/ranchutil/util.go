@@ -1,34 +1,14 @@
 package ranchutil
 
 import (
-	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 
-	log "github.com/Sirupsen/logrus"
 	rancher "github.com/rancher/go-rancher/v2"
 	"k8s.io/client-go/pkg/api/v1"
 )
-
-const (
-	rancherTimeout = 5 * time.Second
-)
-
-func MustNewRancherClient() *rancher.RancherClient {
-	c, err := rancher.NewRancherClient(&rancher.ClientOpts{
-		Url:       os.Getenv("CATTLE_URL"),
-		AccessKey: os.Getenv("CATTLE_ACCESS_KEY"),
-		SecretKey: os.Getenv("CATTLE_SECRET_KEY"),
-		Timeout:   rancherTimeout,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	return c
-}
 
 func opLabel(key string) string {
 	return "io.rancher.operator.etcd." + key

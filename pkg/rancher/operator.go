@@ -10,7 +10,7 @@ import (
 )
 
 func NewRancherOperator(c *cli.Context) *spec.Operator {
-	client := ranchutil.MustNewRancherClient()
+	client := ranchutil.NewContextAwareClient()
 
 	return &spec.Operator{
 		Controller: controller.New(client),

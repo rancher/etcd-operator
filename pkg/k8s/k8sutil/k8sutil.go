@@ -320,14 +320,14 @@ func newLablesForCluster(clusterName string) map[string]string {
 }
 
 func GetPodByName(kubecli kubernetes.Interface, namespace string, name string) (*v1.Pod, error) {
-  var pod *v1.Pod
-  var err error
-  err = retryutil.Retry(5*time.Second, 100, func() (bool, error) {
-    pod, err = kubecli.CoreV1().Pods(namespace).Get(name)
-    if err != nil {
-      return false, err
-    }
-    return true, nil
-  })
-  return pod, err
+	var pod *v1.Pod
+	var err error
+	err = retryutil.Retry(5*time.Second, 100, func() (bool, error) {
+		pod, err = kubecli.CoreV1().Pods(namespace).Get(name)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	})
+	return pod, err
 }
