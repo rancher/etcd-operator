@@ -1,16 +1,11 @@
 package controller
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"math/rand"
-	"net/http"
 	"sync"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/rancher/ranchutil"
+	"github.com/coreos/etcd-operator/pkg/spec"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd-operator/pkg/k8s/cluster"
@@ -18,8 +13,7 @@ import (
 )
 
 type Controller struct {
-	log  *log.Entry
-	hclient *http.Client
+	log     *log.Entry
 	rclient *rancher.RancherClient
 
 	// TODO: combine the three cluster map.
@@ -33,10 +27,7 @@ type Controller struct {
 
 func New(client *rancher.RancherClient) Controller {
 	return Controller{
-		log: log.WithField("pkg", "controller"),
-		hclient: &http.Client{
-			Timeout: 5 * time.Second,
-		},
+		log:     log.WithField("pkg", "controller"),
 		rclient: client,
 
 		clusters:   make(map[string]*cluster.Cluster),
@@ -46,27 +37,17 @@ func New(client *rancher.RancherClient) Controller {
 }
 
 func (c Controller) Run() error {
-	l, err := c.rclient.Project.List(&rancher.ListOpts{
-		Filters: map[string]interface{}{
-			"name": "swarm",
-		},
-	})
+	// stack := ranchutil.NewStack("etcd", "managed by etcd operator")
+	// c.CreateStack(env.Id, stack)
 
-	if len(l.Data) != 1 {
-		c.log.Fatalf("Couldn't find swarm env")
-	}
+	// service := ranchutil.NewEtcdService("etcd", stack.Id)
+	// c.CreateService(env.Id, service)
 
-	env := l.Data[0]
-
-	stack := ranchutil.NewStack("etcd", "managed by etcd operator")
-	c.CreateStack(env.Id, stack)
-
-	service := ranchutil.NewEtcdService("etcd", stack.Id)
-	c.CreateService(env.Id, service)
+	//container := ranchutil.NewEtcdContainer("etcd", service.Id)
+	//c.CreateContainer(env.Id, container)
 
 	c.periodicallyReconcile()
-
-	return err
+	return nil
 }
 
 func (c *Controller) periodicallyReconcile() {
@@ -82,13 +63,17 @@ func (c *Controller) reconcile() {
 	c.log.Debugf("begin reconciliation")
 	defer c.log.Debugf("end reconciliation")
 
-	services := c.findServices()
-	for _, s := range services {
-		c.log.Infof("  reconciling (%s) %s", s.Id, s.Name)
-		//container := NewEtcdContainer("etcd", service.Id)
-		//c.CreateContainer(env.Id, container)
-		//c.log.Infof("%+v", container)
+	for _, cluster := range c.findClusters() {
+		c.log.Infof("  reconciling %+v", cluster)
 	}
+}
+
+func (c *Controller) findClusters() []spec.Cluster {
+	var clusters []spec.Cluster
+	for _, s := range c.findServices() {
+		clusters = append(clusters, ranchutil.ClusterFromService(&s))
+	}
+	return clusters
 }
 
 func (c *Controller) findServices() []rancher.Service {
@@ -108,73 +93,4 @@ func (c *Controller) findServices() []rancher.Service {
 	}
 	c.log.Debugf("found %d etcd services", len(services))
 	return services
-}
-
-func NewEtcdContainer(serviceName string, serviceID string) *rancher.Container {
-	rand.Seed(time.Now().UnixNano())
-	name := fmt.Sprintf("%s-%d", serviceName, rand.Int31())
-
-	return &rancher.Container{
-		Command:     []string{"/usr/local/bin/etcd"},
-		Environment: map[string]interface{}{"ETCD_NAME": name},
-		ImageUuid:   "docker:quay.io/coreos/etcd:v3.1.5",
-		Labels: map[string]interface{}{
-			"io.rancher.operator":                              "etcd",
-			"io.rancher.operator.etcd.name":                    serviceName,
-			"io.rancher.scheduler.affinity:container_label_ne": "io.rancher.operator.etcd.name=" + serviceName,
-		},
-		Name:          name,
-		NetworkMode:   "bridge",
-		ServiceIds:    []string{serviceID},
-		StartOnCreate: true,
-		StdinOpen:     true,
-		Tty:           true,
-	}
-}
-
-func (c *Controller) CreateStack(envId string, stack *rancher.Stack) {
-	c.create(envId, "stack", stack)
-}
-func (c *Controller) CreateService(envId string, service *ranchutil.Service) {
-	c.create(envId, "service", service)
-}
-func (c *Controller) CreateContainer(envId string, container *rancher.Container) {
-	c.create(envId, "container", container)
-}
-
-func (c *Controller) create(envId string, otype string, createObj interface{}) error {
-	b, err := json.Marshal(createObj)
-	if err != nil {
-		return err
-	}
-
-	url := fmt.Sprintf("%s/projects/%s/%s", c.rclient.GetOpts().Url, envId, otype)
-	req, err2 := http.NewRequest("POST", url, bytes.NewBuffer(b))
-	if err2 != nil {
-		return err2
-	}
-	req.SetBasicAuth(c.rclient.GetOpts().AccessKey, c.rclient.GetOpts().SecretKey)
-
-	c.log.Debugf("req: %+v", req)
-	resp, err3 := c.hclient.Do(req)
-	if err3 != nil {
-		return err3
-	}
-	c.log.Debugf("resp: %+v", resp)
-
-	defer resp.Body.Close()
-	byteContent, err4 := ioutil.ReadAll(resp.Body)
-	if err4 != nil {
-		return err4
-	}
-
-	if len(byteContent) > 0 {
-		err5 := json.Unmarshal(byteContent, createObj)
-		if err5 != nil {
-			return err5
-		}
-	}
-
-	c.log.Debugf("create(): %+v", createObj)
-	return nil
 }
