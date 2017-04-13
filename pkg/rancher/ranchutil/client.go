@@ -115,14 +115,14 @@ func (c *ContextAwareClient) Env(id string) *rancher.RancherClient {
 	return c.getOrCreateClient(id)
 }
 
-func (c *ContextAwareClient) ListEtcdServices(envId string) []*rancher.Service {
-	services := []*rancher.Service{}
+func (c *ContextAwareClient) ListEtcdServices(envId string) []rancher.Service {
+	services := []rancher.Service{}
 	allServices, err := c.Env(envId).Service.List(&rancher.ListOpts{})
 	if err == nil {
 		for _, s := range allServices.Data {
 			if s.LaunchConfig != nil && s.LaunchConfig.Labels != nil {
 				if _, ok := s.LaunchConfig.Labels["io.rancher.operator"]; ok {
-					services = append(services, &s)
+					services = append(services, s)
 				}
 			}
 		}

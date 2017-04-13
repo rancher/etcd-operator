@@ -14,14 +14,16 @@ func opLabel(key string) string {
 	return "io.rancher.operator.etcd." + key
 }
 
-func getLabel(s *rancher.Service, label string) string {
-	if val, ok := s.LaunchConfig.Labels[label]; ok {
-		return val.(string)
+func getLabel(s rancher.Service, label string) string {
+	if s.LaunchConfig != nil {
+		if val, ok := s.LaunchConfig.Labels[label]; ok {
+			return val.(string)
+		}
 	}
 	return ""
 }
 
-func labelBool(s *rancher.Service, label string, def bool) bool {
+func labelBool(s rancher.Service, label string, def bool) bool {
 	switch getLabel(s, label) {
 	case "true":
 		return true
@@ -32,7 +34,7 @@ func labelBool(s *rancher.Service, label string, def bool) bool {
 	}
 }
 
-func labelString(s *rancher.Service, label string, def string) string {
+func labelString(s rancher.Service, label string, def string) string {
 	l := getLabel(s, label)
 	if l == "" {
 		return def
@@ -40,7 +42,7 @@ func labelString(s *rancher.Service, label string, def string) string {
 	return l
 }
 
-func labelInt(s *rancher.Service, label string, def int) int {
+func labelInt(s rancher.Service, label string, def int) int {
 	l := getLabel(s, label)
 	if val, err := strconv.Atoi(l); err == nil {
 		return val
@@ -48,7 +50,7 @@ func labelInt(s *rancher.Service, label string, def int) int {
 	return def
 }
 
-func ClusterFromService(s *rancher.Service) spec.Cluster {
+func ClusterFromService(s rancher.Service) spec.Cluster {
 	nodeSelector := map[string]string{}
 	hostAffinities := getLabel(s, "io.rancher.scheduler.affinity:host_label")
 	if hostAffinities != "" {
