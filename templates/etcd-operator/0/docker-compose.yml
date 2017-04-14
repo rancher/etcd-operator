@@ -5,11 +5,13 @@ services:
     command:
     - rancher
     - operator
-    - --analytics=false
-    - --gc-interval=30s
+    - --analytics=${ANALYTICS}
+    - --gc-interval=${GC_INTERVAL}
+    - --chaos-level=${CHAOS_LEVEL}
+    environment:
+      CATTLE_URL: ${CATTLE_URL}
+      CATTLE_ACCESS_KEY: ${CATTLE_ACCESS_KEY}
+      CATTLE_SECRET_KEY: ${CATTLE_SECRET_KEY}
     labels:
-      io.rancher.container.agent.role: environmentAdmin
-      io.rancher.container.create_agent: "true"
       io.rancher.container.pull_image: always
-      io.rancher.scheduler.affinity:container_label_ne: io.rancher.stack_service.name=$${stack_name}/$${service_name}
     network_mode: host
