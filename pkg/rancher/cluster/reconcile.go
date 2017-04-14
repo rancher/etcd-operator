@@ -17,21 +17,21 @@ package cluster
 import (
 	"errors"
 
-	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/rancher/ranchutil"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+	rancher "github.com/rancher/go-rancher/v2"
 	"golang.org/x/net/context"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 // reconcile reconciles cluster current state to desired state specified by spec.
 // - it tries to reconcile the cluster to desired size.
 // - if the cluster needs for upgrade, it tries to upgrade old member one by one.
-func (c *Cluster) reconcile(pods []*v1.Pod) error {
+func (c *Cluster) reconcile(containers []*rancher.Container) error {
 	c.logger.Infoln("Start reconciling")
 	defer c.logger.Infoln("Finish reconciling")
 
@@ -40,15 +40,15 @@ func (c *Cluster) reconcile(pods []*v1.Pod) error {
 	}()
 
 	sp := c.cluster.Spec
-	running := podsToMemberSet(pods, c.cluster.Spec.SelfHosted)
+	running := containersToMemberSet(containers, c.cluster.Spec.SelfHosted)
 	if !running.IsEqual(c.members) || c.members.Size() != sp.Size {
 		return c.reconcileMembers(running)
 	}
 
-	if needUpgrade(pods, sp) {
+	if needUpgrade(containers, sp) {
 		c.status.UpgradeVersionTo(sp.Version)
 
-		m := pickOneOldMember(pods, sp.Version)
+		m := pickOneOldMember(containers, sp.Version)
 		return c.upgradeOneMember(m.Name)
 	}
 
@@ -73,7 +73,7 @@ func (c *Cluster) reconcileMembers(running etcdutil.MemberSet) error {
 
 	unknownMembers := running.Diff(c.members)
 	if unknownMembers.Size() > 0 {
-		c.logger.Infof("removing unexpected pods: %v", unknownMembers)
+		c.logger.Infof("removing unexpected containers: %v", unknownMembers)
 		for _, m := range unknownMembers {
 			if err := c.removePodAndService(m.Name); err != nil {
 				return err
@@ -223,16 +223,16 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	return c.recover()
 }
 
-func needUpgrade(pods []*v1.Pod, cs spec.ClusterSpec) bool {
-	return len(pods) == cs.Size && pickOneOldMember(pods, cs.Version) != nil
+func needUpgrade(containers []*rancher.Container, cs spec.ClusterSpec) bool {
+	return len(containers) == cs.Size && pickOneOldMember(containers, cs.Version) != nil
 }
 
-func pickOneOldMember(pods []*v1.Pod, newVersion string) *etcdutil.Member {
-	for _, pod := range pods {
-		if k8sutil.GetEtcdVersion(pod) == newVersion {
+func pickOneOldMember(containers []*rancher.Container, newVersion string) *etcdutil.Member {
+	for _, container := range containers {
+		if ranchutil.GetEtcdVersion(container) == newVersion {
 			continue
 		}
-		return &etcdutil.Member{Name: pod.Name, Namespace: pod.Namespace}
+		return &etcdutil.Member{Name: container.Name, Namespace: container.AccountId}
 	}
 	return nil
 }

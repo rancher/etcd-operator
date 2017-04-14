@@ -14,28 +14,29 @@
 
 package cluster
 
-import (
-	"fmt"
-
-	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil"
-)
-
+// FIXME
+// rancher doesn't have ability to upgrade bare containers,
+// so we will need to implement it.
+//
+// If we cannot upgrade the container and retain our network identity,
+// we will need to update cluster membership as part of this process.
 func (c *Cluster) upgradeOneMember(memberName string) error {
 	c.status.AppendUpgradingCondition(c.cluster.Spec.Version, memberName)
-
-	ns := c.cluster.Metadata.Namespace
-
-	pod, err := c.config.KubeCli.CoreV1().Pods(ns).Get(memberName)
-	if err != nil {
-		return fmt.Errorf("fail to get pod (%s): %v", memberName, err)
-	}
-	c.logger.Infof("upgrading the etcd member %v from %s to %s", memberName, k8sutil.GetEtcdVersion(pod), c.cluster.Spec.Version)
-	pod.Spec.Containers[0].Image = k8sutil.EtcdImageName(c.cluster.Spec.Version)
-	k8sutil.SetEtcdVersion(pod, c.cluster.Spec.Version)
-	_, err = c.config.KubeCli.CoreV1().Pods(ns).Update(pod)
-	if err != nil {
-		return fmt.Errorf("fail to update the etcd member (%s): %v", memberName, err)
-	}
-	c.logger.Infof("finished upgrading the etcd member %v", memberName)
+	c.logger.Warnf("upgradeOneMember is unimplemented")
 	return nil
+	// ns := c.cluster.Metadata.Namespace
+
+	// pod, err := c.config.KubeCli.CoreV1().Pods(ns).Get(memberName)
+	// if err != nil {
+	// 	return fmt.Errorf("fail to get pod (%s): %v", memberName, err)
+	// }
+	// c.logger.Infof("upgrading the etcd member %v from %s to %s", memberName, k8sutil.GetEtcdVersion(pod), c.cluster.Spec.Version)
+	// pod.Spec.Containers[0].Image = k8sutil.EtcdImageName(c.cluster.Spec.Version)
+	// k8sutil.SetEtcdVersion(pod, c.cluster.Spec.Version)
+	// _, err = c.config.KubeCli.CoreV1().Pods(ns).Update(pod)
+	// if err != nil {
+	// 	return fmt.Errorf("fail to update the etcd member (%s): %v", memberName, err)
+	// }
+	// c.logger.Infof("finished upgrading the etcd member %v", memberName)
+	// return nil
 }

@@ -25,6 +25,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/analytics"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
+	"github.com/coreos/etcd-operator/pkg/common"
 	"github.com/coreos/etcd-operator/pkg/k8s/cluster"
 	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -181,8 +182,8 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 		c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
 
 		analytics.ClusterCreated()
-		clustersCreated.Inc()
-		clustersTotal.Inc()
+		common.ClustersCreated.Inc()
+		common.ClustersTotal.Inc()
 
 	case kwatch.Modified:
 		if _, ok := c.clusters[clus.Metadata.Name]; !ok {
@@ -190,7 +191,7 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 		}
 		c.clusters[clus.Metadata.Name].Update(clus)
 		c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
-		clustersModified.Inc()
+		common.ClustersModified.Inc()
 
 	case kwatch.Deleted:
 		if _, ok := c.clusters[clus.Metadata.Name]; !ok {
@@ -200,8 +201,8 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 		delete(c.clusters, clus.Metadata.Name)
 		delete(c.clusterRVs, clus.Metadata.Name)
 		analytics.ClusterDeleted()
-		clustersDeleted.Inc()
-		clustersTotal.Dec()
+		common.ClustersDeleted.Inc()
+		common.ClustersTotal.Dec()
 	}
 	return nil
 }

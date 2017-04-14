@@ -7,7 +7,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 
 	rancher "github.com/rancher/go-rancher/v2"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
@@ -56,19 +55,6 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	}
 	c.members = members
 	return nil
-}
-
-func podsToMemberSet(pods []*v1.Pod, selfHosted *spec.SelfHostedPolicy) etcdutil.MemberSet {
-	members := etcdutil.MemberSet{}
-	for _, pod := range pods {
-		m := &etcdutil.Member{Name: pod.Name, Namespace: pod.Namespace}
-		if selfHosted != nil {
-			m.ClientURLs = []string{"http://" + pod.Status.PodIP + ":2379"}
-			m.PeerURLs = []string{"http://" + pod.Status.PodIP + ":2380"}
-		}
-		members.Add(m)
-	}
-	return members
 }
 
 func containersToMemberSet(containers []*rancher.Container, selfHosted *spec.SelfHostedPolicy) etcdutil.MemberSet {

@@ -10,6 +10,7 @@ import (
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/rancher/garbagecollection"
+	"github.com/coreos/etcd-operator/pkg/rancher/ranchutil"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
@@ -165,13 +166,11 @@ func (c *Cluster) create() error {
 		}
 	}
 
-	if err := c.setupServices(); err != nil {
-		return fmt.Errorf("cluster create: fail to create client service LB: %v", err)
-	}
 	return nil
 }
 
 func (c *Cluster) prepareSeedMember() error {
+	c.logger.Infof("prepareSeedMember()")
 	c.status.AppendScalingUpCondition(0, c.cluster.Spec.Size)
 
 	var err error
@@ -264,15 +263,14 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 				c.status.Control()
 			}
 
-			running, pending, err := c.pollPods()
+			running, pending, err := c.pollContainers()
 			if err != nil {
-				c.logger.Errorf("fail to poll pods: %v", err)
-				continue
+				c.logger.Errorf("fail to poll containers: %v", err)
 			}
 
 			if len(pending) > 0 {
 				// Pod startup might take long, e.g. pulling image. It would deterministically become running or succeeded/failed later.
-				c.logger.Infof("skip reconciliation: running (%v), pending (%v)", k8sutil.GetPodNames(running), k8sutil.GetPodNames(pending))
+				c.logger.Infof("skip reconciliation: running (%v), pending (%v)", ranchutil.GetContainerNames(running), ranchutil.GetContainerNames(pending))
 				continue
 			}
 			if len(running) == 0 {
@@ -287,7 +285,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 
 			// On controller restore, we could have "members == nil"
 			if rerr != nil || c.members == nil {
-				rerr = c.updateMembers(podsToMemberSet(running, c.cluster.Spec.SelfHosted))
+				rerr = c.updateMembers(containersToMemberSet(running, c.cluster.Spec.SelfHosted))
 				if rerr != nil {
 					c.logger.Errorf("failed to update members: %v", rerr)
 					break
@@ -342,6 +340,7 @@ func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 
 // bootstrap creates the seed etcd member for a new cluster.
 func (c *Cluster) bootstrap() error {
+	c.logger.Infof("bootstrap()")
 	return c.startSeedMember(false)
 }
 
@@ -360,15 +359,6 @@ func (c *Cluster) delete() {
 	if err := c.bm.cleanup(); err != nil {
 		c.logger.Errorf("cluster deletion: backup manager failed to cleanup: %v", err)
 	}
-}
-
-func (c *Cluster) setupServices() error {
-	err := k8sutil.CreateClientService(c.config.KubeCli, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, c.cluster.AsOwner())
-	if err != nil {
-		return err
-	}
-
-	return k8sutil.CreatePeerService(c.config.KubeCli, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, c.cluster.AsOwner())
 }
 
 func (c *Cluster) deleteClientServiceLB() error {
@@ -423,7 +413,43 @@ func (c *Cluster) removePodAndService(name string) error {
 	return nil
 }
 
+func containerHasLabel(c *rancher.Container, name, value string) bool {
+	if val, ok := c.Labels[name]; ok {
+		if val.(string) == value {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Cluster) pollContainers() (running, pending []*rancher.Container, err error) {
+	collection, err := c.config.Client.Container.List(&rancher.ListOpts{})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to list running containers: %v", err)
+	}
+
+	for _, n := range collection.Data {
+		// ignore containers not belonging to this service
+		// we ideally would be able to filter the List() operation
+		if !containerHasLabel(&n, "service", c.cluster.Metadata.Name) {
+			continue
+		}
+		switch n.State {
+		case "running":
+			running = append(running, &n)
+		default:
+			pending = append(pending, &n)
+		}
+
+		c.logger.Debugf("container: %s", n.Name)
+	}
+	return running, pending, nil
+}
+
 func (c *Cluster) pollPods() (running, pending []*v1.Pod, err error) {
+	if c.config.KubeCli == nil {
+		return nil, nil, fmt.Errorf("no kubecli")
+	}
 	podList, err := c.config.KubeCli.Core().Pods(c.cluster.Metadata.Namespace).List(k8sutil.ClusterListOpt(c.cluster.Metadata.Name))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list running pods: %v", err)
@@ -451,23 +477,23 @@ func (c *Cluster) pollPods() (running, pending []*v1.Pod, err error) {
 	return running, pending, nil
 }
 
-func (c *Cluster) updateMemberStatus(pods []*v1.Pod) {
-	var ready, unready []*v1.Pod
-	for _, pod := range pods {
+func (c *Cluster) updateMemberStatus(containers []*rancher.Container) {
+	var ready, unready []*rancher.Container
+	for _, container := range containers {
 		// TODO: Change to URL struct for TLS integration
-		url := fmt.Sprintf("http://%s:2379", pod.Status.PodIP)
+		url := fmt.Sprintf("http://%s:2379", container.PrimaryIpAddress)
 		healthy, err := etcdutil.CheckHealth(url)
 		if err != nil {
 			c.logger.Warningf("health check of etcd member (%s) failed: %v", url, err)
 		}
 		if healthy {
-			ready = append(ready, pod)
+			ready = append(ready, container)
 		} else {
-			unready = append(unready, pod)
+			unready = append(unready, container)
 		}
 	}
-	c.status.Members.Ready = k8sutil.GetPodNames(ready)
-	c.status.Members.Unready = k8sutil.GetPodNames(unready)
+	c.status.Members.Ready = ranchutil.GetContainerNames(ready)
+	c.status.Members.Unready = ranchutil.GetContainerNames(unready)
 }
 
 func (c *Cluster) updateTPRStatus() error {
@@ -477,7 +503,7 @@ func (c *Cluster) updateTPRStatus() error {
 
 	newCluster := c.cluster
 	newCluster.Status = c.status
-	newCluster, err := k8sutil.UpdateClusterTPRObject(c.config.KubeCli.Core().RESTClient(), c.cluster.Metadata.Namespace, newCluster)
+	newCluster, err := ranchutil.UpdateClusterTPRObject(c.config.Client, c.cluster.Metadata.Namespace, newCluster)
 	if err != nil {
 		return err
 	}

@@ -2,16 +2,13 @@ package ranchutil
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
-	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
-	apierrors "k8s.io/client-go/pkg/api/errors"
-	"k8s.io/client-go/rest"
+	rancher "github.com/rancher/go-rancher/v2"
 )
 
 func WatchClusters(host, ns string, httpClient *http.Client, resourceVersion string) (*http.Response, error) {
@@ -19,8 +16,8 @@ func WatchClusters(host, ns string, httpClient *http.Client, resourceVersion str
 		host, spec.TPRGroup, spec.TPRVersion, ns, resourceVersion))
 }
 
-func GetClusterList(restcli rest.Interface, ns string) (*spec.ClusterList, error) {
-	b, err := restcli.Get().RequestURI(listClustersURI(ns)).DoRaw()
+func GetClusterList(client *rancher.RancherClient, ns string) (*spec.ClusterList, error) {
+	/*b, err := restcli.Get().RequestURI(listClustersURI(ns)).DoRaw()
 	if err != nil {
 		return nil, err
 	}
@@ -29,11 +26,12 @@ func GetClusterList(restcli rest.Interface, ns string) (*spec.ClusterList, error
 	if err := json.Unmarshal(b, clusters); err != nil {
 		return nil, err
 	}
-	return clusters, nil
+	return clusters, nil*/
+	return nil, nil
 }
 
-func WaitEtcdTPRReady(restcli rest.Interface, interval, timeout time.Duration, ns string) error {
-	return retryutil.Retry(interval, int(timeout/interval), func() (bool, error) {
+func WaitEtcdTPRReady(client *rancher.RancherClient, interval, timeout time.Duration, ns string) error {
+	/*return retryutil.Retry(interval, int(timeout/interval), func() (bool, error) {
 		_, err := restcli.Get().RequestURI(listClustersURI(ns)).DoRaw()
 		if err != nil {
 			if apierrors.IsNotFound(err) { // not set up yet. wait more.
@@ -42,45 +40,50 @@ func WaitEtcdTPRReady(restcli rest.Interface, interval, timeout time.Duration, n
 			return false, err
 		}
 		return true, nil
-	})
+	})*/
+	return nil
 }
 
 func listClustersURI(ns string) string {
-	return fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters", spec.TPRGroup, spec.TPRVersion, ns)
+	//return fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters", spec.TPRGroup, spec.TPRVersion, ns)
+	return ""
 }
 
-func GetClusterTPRObject(restcli rest.Interface, ns, name string) (*spec.Cluster, error) {
-	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, ns, name)
+func GetClusterTPRObject(client *rancher.RancherClient, ns, name string) (*spec.Cluster, error) {
+	/*uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, ns, name)
 	b, err := restcli.Get().RequestURI(uri).DoRaw()
 	if err != nil {
 		return nil, err
 	}
-	return readOutCluster(b)
+	return readOutCluster(b)*/
+	return nil, nil
 }
 
 // UpdateClusterTPRObject updates the given TPR object.
 // ResourceVersion of the object MUST be set or update will fail.
-func UpdateClusterTPRObject(restcli rest.Interface, ns string, c *spec.Cluster) (*spec.Cluster, error) {
-	if len(c.Metadata.ResourceVersion) == 0 {
-		return nil, errors.New("k8sutil: resource version is not provided")
-	}
-	return updateClusterTPRObject(restcli, ns, c)
+func UpdateClusterTPRObject(client *rancher.RancherClient, ns string, c *spec.Cluster) (*spec.Cluster, error) {
+	return updateClusterTPRObject(client, ns, c)
 }
 
 // UpdateClusterTPRObjectUnconditionally updates the given TPR object.
 // This should only be used in tests.
-func UpdateClusterTPRObjectUnconditionally(restcli rest.Interface, ns string, c *spec.Cluster) (*spec.Cluster, error) {
-	c.Metadata.ResourceVersion = ""
-	return updateClusterTPRObject(restcli, ns, c)
+func UpdateClusterTPRObjectUnconditionally(client *rancher.RancherClient, ns string, c *spec.Cluster) (*spec.Cluster, error) {
+	return updateClusterTPRObject(client, ns, c)
 }
 
-func updateClusterTPRObject(restcli rest.Interface, ns string, c *spec.Cluster) (*spec.Cluster, error) {
-	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, ns, c.Metadata.Name)
-	b, err := restcli.Put().RequestURI(uri).Body(c).DoRaw()
+func updateClusterTPRObject(client *rancher.RancherClient, ns string, c *spec.Cluster) (*spec.Cluster, error) {
+	// get the service by c.Metadata.Name (uuid)
+	s, err := client.Service.ById(c.Metadata.Name)
 	if err != nil {
 		return nil, err
 	}
-	return readOutCluster(b)
+	// TODO serialize cluster object nad put in service label io.rancher.operator.tpr
+	s.LaunchConfig.Labels["io.rancher.operator.tpr"] = "thisisatest!!!!"
+	s, err = client.Service.Update(s, nil)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func readOutCluster(b []byte) (*spec.Cluster, error) {

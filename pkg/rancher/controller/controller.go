@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/analytics"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
+	"github.com/coreos/etcd-operator/pkg/common"
 	"github.com/coreos/etcd-operator/pkg/rancher/cluster"
 	"github.com/coreos/etcd-operator/pkg/rancher/ranchutil"
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -39,7 +40,7 @@ const (
 
 type Event struct {
 	Type   kwatch.EventType
-	Object *spec.Cluster
+	Object spec.Cluster
 }
 
 type Config struct {
@@ -98,7 +99,7 @@ func (c Controller) Run() error {
 
 		for event := range eventCh {
 			pt.start()
-			if err := c.handle(event); err != nil {
+			if err := c.handleClusterEvent(event); err != nil {
 				c.log.Warningf("fail to handle event: %v", err)
 			}
 			pt.stop()
@@ -135,19 +136,19 @@ func (c *Controller) detect(eventCh chan<- *Event, errCh chan<- error) {
 	for _, newCluster := range newClusters {
 		oldCluster, ok := c.clusters[newCluster.Metadata.Name]
 		if !ok {
-			eventCh <- &Event{Type: kwatch.Added, Object: &newCluster}
+			eventCh <- &Event{Type: kwatch.Added, Object: newCluster}
 		} else if !oldCluster.Get().Equals(newCluster) {
-			eventCh <- &Event{Type: kwatch.Modified, Object: &newCluster}
+			eventCh <- &Event{Type: kwatch.Modified, Object: newCluster}
 		}
 	}
 	for _, oldCluster := range c.clusters {
 		if _, ok := newClusters[oldCluster.Get().Metadata.Name]; !ok {
-			eventCh <- &Event{Type: kwatch.Deleted, Object: oldCluster.Get()}
+			eventCh <- &Event{Type: kwatch.Deleted, Object: *oldCluster.Get()}
 		}
 	}
 }
 
-func (c *Controller) handle(event *Event) error {
+func (c *Controller) handleClusterEvent(event *Event) error {
 	c.log.Debugf("Received event: %+v", event)
 	clus := event.Object
 
@@ -164,21 +165,21 @@ func (c *Controller) handle(event *Event) error {
 	switch event.Type {
 	case kwatch.Added:
 		stopC := make(chan struct{})
-		nc := cluster.New(c.makeClusterConfig(clus.Metadata.Namespace), clus, stopC, &c.waitCluster)
+		nc := cluster.New(c.makeClusterConfig(clus.Metadata.Namespace), &clus, stopC, &c.waitCluster)
 
 		c.stopChMap[clus.Metadata.Name] = stopC
 		c.clusters[clus.Metadata.Name] = nc
 
 		analytics.ClusterCreated()
-		clustersCreated.Inc()
-		clustersTotal.Inc()
+		common.ClustersCreated.Inc()
+		common.ClustersTotal.Inc()
 
 	case kwatch.Modified:
 		if _, ok := c.clusters[clus.Metadata.Name]; !ok {
 			return fmt.Errorf("unsafe state. cluster was never created but we received event (%s)", event.Type)
 		}
-		c.clusters[clus.Metadata.Name].Update(clus)
-		clustersModified.Inc()
+		c.clusters[clus.Metadata.Name].Update(&clus)
+		common.ClustersModified.Inc()
 
 	case kwatch.Deleted:
 		if _, ok := c.clusters[clus.Metadata.Name]; !ok {
@@ -187,8 +188,8 @@ func (c *Controller) handle(event *Event) error {
 		c.clusters[clus.Metadata.Name].Delete()
 		delete(c.clusters, clus.Metadata.Name)
 		analytics.ClusterDeleted()
-		clustersDeleted.Inc()
-		clustersTotal.Dec()
+		common.ClustersDeleted.Inc()
+		common.ClustersTotal.Dec()
 	}
 	return nil
 }
@@ -210,8 +211,7 @@ func (c *Controller) findAllClusters() (map[string]spec.Cluster, error) {
 			s.SelectorContainer = fmt.Sprintf("app=etcd,uuid=%s", s.Uuid)
 			// we have to adjust the context here from global -> environment to make changes
 			ranchutil.SetResourceContext(&s.Resource, s.AccountId)
-			log.Debugf("service: %+v", s)
-			if _, err := c.config.Client.Env(s.AccountId).Service.ActionUpdate(&s); err != nil {
+			if _, err := c.config.Client.Env(s.AccountId).Service.Update(&s, nil); err != nil {
 				log.Warnf("couldn't update service: %s", err)
 			}
 		}

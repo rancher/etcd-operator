@@ -1,6 +1,7 @@
 package ranchutil
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -10,21 +11,58 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
+const (
+	etcdVolumeMountDir         = "/var/etcd"
+	dataDir                    = etcdVolumeMountDir + "/data"
+	backupFile                 = "/var/etcd/latest.backup"
+	etcdVersionAnnotationKey   = "etcd.version"
+	annotationPrometheusScrape = "prometheus.io/scrape"
+	annotationPrometheusPort   = "prometheus.io/port"
+)
+
+func EtcdImageName(version string) string {
+	return fmt.Sprintf("docker:quay.io/coreos/etcd:v%v", version)
+}
+
+func GetEtcdVersion(c *rancher.Container) string {
+	return getLabelValue(c.Labels, "version")
+}
+
+func SetEtcdVersion(c *rancher.Container, version string) {
+	c.Labels["version"] = version
+}
+
+func GetContainerNames(containers []*rancher.Container) []string {
+	res := []string{}
+	if len(containers) == 0 {
+		return nil
+	}
+	for _, c := range containers {
+		res = append(res, c.Name)
+	}
+	return res
+}
+
 func opLabel(key string) string {
 	return "io.rancher.operator.etcd." + key
 }
 
-func getLabel(s rancher.Service, label string) string {
+func getLabelValue(labels map[string]interface{}, name string) string {
+	if value, ok := labels[name]; ok {
+		return value.(string)
+	}
+	return ""
+}
+
+func getServiceLabelValue(s rancher.Service, name string) string {
 	if s.LaunchConfig != nil {
-		if val, ok := s.LaunchConfig.Labels[label]; ok {
-			return val.(string)
-		}
+		return getLabelValue(s.LaunchConfig.Labels, name)
 	}
 	return ""
 }
 
 func labelBool(s rancher.Service, label string, def bool) bool {
-	switch getLabel(s, label) {
+	switch getServiceLabelValue(s, label) {
 	case "true":
 		return true
 	case "false":
@@ -35,7 +73,7 @@ func labelBool(s rancher.Service, label string, def bool) bool {
 }
 
 func labelString(s rancher.Service, label string, def string) string {
-	l := getLabel(s, label)
+	l := getServiceLabelValue(s, label)
 	if l == "" {
 		return def
 	}
@@ -43,7 +81,7 @@ func labelString(s rancher.Service, label string, def string) string {
 }
 
 func labelInt(s rancher.Service, label string, def int) int {
-	l := getLabel(s, label)
+	l := getServiceLabelValue(s, label)
 	if val, err := strconv.Atoi(l); err == nil {
 		return val
 	}
@@ -52,7 +90,7 @@ func labelInt(s rancher.Service, label string, def int) int {
 
 func ClusterFromService(s rancher.Service) spec.Cluster {
 	nodeSelector := map[string]string{}
-	hostAffinities := getLabel(s, "io.rancher.scheduler.affinity:host_label")
+	hostAffinities := getServiceLabelValue(s, "io.rancher.scheduler.affinity:host_label")
 	if hostAffinities != "" {
 		for _, label := range strings.Split(hostAffinities, ",") {
 			kv := strings.Split(label, "=")
@@ -64,7 +102,7 @@ func ClusterFromService(s rancher.Service) spec.Cluster {
 
 	return spec.Cluster{
 		Metadata: v1.ObjectMeta{
-			Name:      s.Uuid,
+			Name:      s.Id,
 			Namespace: s.AccountId,
 		},
 		Spec: spec.ClusterSpec{
@@ -76,8 +114,9 @@ func ClusterFromService(s rancher.Service) spec.Cluster {
 				AntiAffinity: labelBool(s, opLabel("antiaffinity"), false),
 				// TODO resource constraints?
 			},
-			Backup:     &spec.BackupPolicy{},
-			Restore:    &spec.RestorePolicy{},
+			Backup: &spec.BackupPolicy{},
+			// must be nil if not set, don't create empty object
+			//Restore:    &spec.RestorePolicy{},
 			SelfHosted: &spec.SelfHostedPolicy{},
 			TLS:        &spec.TLSPolicy{},
 		},

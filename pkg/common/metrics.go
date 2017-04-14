@@ -1,30 +1,30 @@
-package controller
+package common
 
 import "github.com/prometheus/client_golang/prometheus"
 
 var (
-	clustersTotal = prometheus.NewGauge(prometheus.GaugeOpts{
+	ClustersTotal = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "etcd_operator",
 		Subsystem: "controller",
 		Name:      "clusters",
 		Help:      "Total number of clusters managed by the controller",
 	})
 
-	clustersCreated = prometheus.NewCounter(prometheus.CounterOpts{
+	ClustersCreated = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "etcd_operator",
 		Subsystem: "controller",
 		Name:      "clusters_created",
 		Help:      "Total number of clusters created",
 	})
 
-	clustersDeleted = prometheus.NewCounter(prometheus.CounterOpts{
+	ClustersDeleted = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "etcd_operator",
 		Subsystem: "controller",
 		Name:      "clusters_deleted",
 		Help:      "Total number of clusters deleted",
 	})
 
-	clustersModified = prometheus.NewCounter(prometheus.CounterOpts{
+	ClustersModified = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "etcd_operator",
 		Subsystem: "controller",
 		Name:      "clusters_modified",
@@ -33,8 +33,8 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(clustersTotal)
-	prometheus.MustRegister(clustersCreated)
-	prometheus.MustRegister(clustersDeleted)
-	prometheus.MustRegister(clustersModified)
+	prometheus.MustRegister(ClustersTotal)
+	prometheus.MustRegister(ClustersCreated)
+	prometheus.MustRegister(ClustersDeleted)
+	prometheus.MustRegister(ClustersModified)
 }

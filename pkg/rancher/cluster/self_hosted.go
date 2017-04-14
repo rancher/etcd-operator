@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/rancher/ranchutil"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
@@ -69,19 +70,24 @@ func (c *Cluster) addOneSelfHostedMember() error {
 func (c *Cluster) newSelfHostedSeedMember() error {
 	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Metadata.Name, c.memberCounter)
 	c.memberCounter++
-	initialCluster := []string{newMemberName + "=http://$(MY_POD_IP):2380"}
+	initialCluster := []string{newMemberName + "=http://$(hostname -i):2380"}
 
-	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "new", uuid.New(), c.cluster.Spec, c.cluster.AsOwner())
-	_, err := k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Metadata.Namespace, pod, 30*time.Second)
+	container := ranchutil.NewSelfHostedEtcdContainer(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "new", uuid.New(), c.cluster.Spec)
+	_, err := c.config.Client.Container.Create(container)
 	if err != nil {
 		return err
 	}
+	//_, err := k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Metadata.Namespace, pod, 30*time.Second)
+	//if err != nil {
+	//	return err
+	//}
 
 	c.logger.Infof("self-hosted cluster created with seed member (%s)", newMemberName)
 	return nil
 }
 
 func (c *Cluster) migrateBootMember() error {
+	c.logger.Info("migrateBootMember()")
 	endpoint := c.cluster.Spec.SelfHosted.BootMemberClientEndpoint
 
 	c.logger.Infof("migrating boot member (%s)", endpoint)
