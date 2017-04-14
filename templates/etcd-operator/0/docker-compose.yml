@@ -3,7 +3,8 @@ services:
   etcd-operator:
     image: llparse/etcd-operator:dev
     command:
-    - rancher operator
+    - rancher
+    - operator
     - --analytics=false
     - --gc-interval=30s
     labels:

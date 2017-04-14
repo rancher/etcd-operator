@@ -423,16 +423,31 @@ func containerHasLabel(c *rancher.Container, name, value string) bool {
 }
 
 func (c *Cluster) pollContainers() (running, pending []*rancher.Container, err error) {
-	collection, err := c.config.Client.Container.List(&rancher.ListOpts{})
+	containerColl, err := c.config.Client.Container.List(&rancher.ListOpts{})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list running containers: %v", err)
 	}
 
-	for _, n := range collection.Data {
+	// get the hosts into a map so we can set primaryIpAddress for networkMode=host containers
+	hostColl, err2 := c.config.Client.Host.List(&rancher.ListOpts{})
+	if err2 != nil {
+		return nil, nil, fmt.Errorf("failed to list hosts: %v", err2)
+	}
+	hosts := make(map[string]rancher.Host)
+	for _, host := range hostColl.Data {
+		hosts[host.Id] = host
+	}
+
+	for _, n := range containerColl.Data {
 		// ignore containers not belonging to this service
 		// we ideally would be able to filter the List() operation
-		if !containerHasLabel(&n, "service", c.cluster.Metadata.Name) {
+		if !containerHasLabel(&n, "cluster", c.cluster.Metadata.Name) {
 			continue
+		}
+		if n.NetworkMode == "host" {
+			if h, ok := hosts[n.HostId]; ok {
+				n.PrimaryIpAddress = h.AgentIpAddress
+			}
 		}
 		switch n.State {
 		case "running":

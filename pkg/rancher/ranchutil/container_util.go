@@ -20,6 +20,7 @@ func etcdContainer(commands, version string) rancher.Container {
 		DataVolumes: etcdVolumeMounts(),
 		ImageUuid:   EtcdImageName(version),
 		Labels:      make(map[string]interface{}),
+		NetworkMode: "ipsec",
 		Ports:       []string{"2379", "2380"},
 	}
 }

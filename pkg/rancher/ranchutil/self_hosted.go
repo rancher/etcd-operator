@@ -39,7 +39,7 @@ const (
 func NewSelfHostedEtcdContainer(name string, initialCluster []string, clusterName, ns, state, token string, cs spec.ClusterSpec) *rancher.Container {
 	selfHostedDataDir := path.Join(etcdVolumeMountDir, ns+"-"+name)
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=http://$(hostname -i):2380 "+
-		"--listen-peer-urls=http://$(hostname -i):2380 --listen-client-urls=http://$(hostname -i):2379 --advertise-client-urls=http://$(hostname -i):2379 "+
+		"--listen-peer-urls=http://0.0.0.0:2380 --listen-client-urls=http://0.0.0.0:2379 --advertise-client-urls=http://$(hostname -i):2379 "+
 		"--initial-cluster=%s --initial-cluster-state=%s --metrics extensive",
 		selfHostedDataDir, name, strings.Join(initialCluster, ","), state)
 
