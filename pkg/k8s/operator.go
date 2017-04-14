@@ -11,7 +11,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-func NewKubernetesOperator(c *cli.Context) *spec.Operator {
+func NewOperator(c *cli.Context) *spec.Operator {
 	// Workaround for watching TPR resource.
 	restCfg, err := k8sutil.InClusterConfig()
 	if err != nil {
@@ -24,7 +24,7 @@ func NewKubernetesOperator(c *cli.Context) *spec.Operator {
 	}
 	controller.KubeHttpCli = restcli.Client
 
-	cfg := newK8sControllerConfig(c)
+	cfg := newControllerConfig(c)
 	if err := cfg.Validate(); err != nil {
 		logrus.Fatalf("invalid operator config: %v", err)
 	}
@@ -37,7 +37,7 @@ func NewKubernetesOperator(c *cli.Context) *spec.Operator {
 	}
 }
 
-func newK8sControllerConfig(c *cli.Context) controller.Config {
+func newControllerConfig(c *cli.Context) controller.Config {
 	kubecli := k8sutil.MustNewKubeClient()
 
 	pod, err := k8sutil.GetPodByName(kubecli, c.String("namespace"), c.String("name"))

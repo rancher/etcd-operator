@@ -64,7 +64,8 @@ func ClusterFromService(s rancher.Service) spec.Cluster {
 
 	return spec.Cluster{
 		Metadata: v1.ObjectMeta{
-			Name: s.Name,
+			Name:      s.Uuid,
+			Namespace: s.AccountId,
 		},
 		Spec: spec.ClusterSpec{
 			Size:    labelInt(s, opLabel("size"), 1),

@@ -192,14 +192,14 @@ func kubernetesBackup(c *cli.Context) error {
 }
 
 func kubernetesOperator(c *cli.Context) error {
-	op := k8s.NewKubernetesOperator(c)
+	op := k8s.NewOperator(c)
 	electLeader(op.Run, c.String("namespace"))
 	return nil
 }
 
 func rancherOperator(c *cli.Context) error {
 	// TODO leader election
-	rancher.NewRancherOperator(c).Run(nil)
+	rancher.NewOperator(c).Run(nil)
 	return nil
 }
 

@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -49,6 +50,14 @@ type Cluster struct {
 	Metadata             v1.ObjectMeta `json:"metadata,omitempty"`
 	Spec                 ClusterSpec   `json:"spec"`
 	Status               ClusterStatus `json:"status"`
+}
+
+func (c Cluster) Equals(o Cluster) bool {
+	if &c != &o && (c.Metadata.Name != o.Metadata.Name ||
+		!reflect.DeepEqual(c.Spec, o.Spec)) {
+		return false
+	}
+	return true
 }
 
 func (c *Cluster) AsOwner() metatypes.OwnerReference {

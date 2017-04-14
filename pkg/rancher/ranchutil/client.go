@@ -35,8 +35,14 @@ type ContextAwareClient struct {
 }
 
 func NewContextAwareClient() *ContextAwareClient {
+	// append /schemas to path so resp X-API-Schemas header returns correct endpoint
+	cattleUrl := os.Getenv("CATTLE_URL")
+	if !strings.HasSuffix(cattleUrl, "/schemas") {
+		cattleUrl = cattleUrl + "/schemas"
+	}
+
 	c, err := rancher.NewRancherClient(&rancher.ClientOpts{
-		Url:       os.Getenv("CATTLE_URL"),
+		Url:       cattleUrl,
 		AccessKey: os.Getenv("CATTLE_ACCESS_KEY"),
 		SecretKey: os.Getenv("CATTLE_SECRET_KEY"),
 		Timeout:   rancherTimeout,
@@ -46,25 +52,10 @@ func NewContextAwareClient() *ContextAwareClient {
 	}
 
 	cac := &ContextAwareClient{
-		clients:    make(map[string]*rancher.RancherClient),
+		clients: map[string]*rancher.RancherClient{
+			getContextFromURL(c.GetOpts().Url): c,
+		},
 		initClient: c,
-	}
-
-	u, err2 := url.Parse(c.GetOpts().Url)
-	if err2 != nil {
-		log.Fatal(err)
-	}
-
-	pathVars := strings.Split(u.Path, "/")
-	switch len(pathVars) {
-	// we were given global context (v2-beta)
-	case 2:
-		cac.clients["global"] = c
-	// we were given environment context (v2-beta/projects/1a103)
-	case 4:
-		cac.clients[pathVars[3]] = c
-	default:
-		log.Fatalf("Can't understand API endpoint: %s", c.GetOpts().Url)
 	}
 
 	return cac
@@ -76,10 +67,10 @@ func (c *ContextAwareClient) createClient(id string) *rancher.RancherClient {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if id != "" {
-		u.Path = strings.Join([]string{strings.Split(u.Path, "/")[1], "projects", id}, "/")
+	if id != "global" {
+		u.Path = strings.Join([]string{strings.Split(u.Path, "/")[1], "projects", id, "schemas"}, "/")
 	} else {
-		u.Path = strings.Split(u.Path, "/")[1]
+		u.Path = strings.Join([]string{strings.Split(u.Path, "/")[1], "schemas"}, "/")
 	}
 
 	cl, err2 := rancher.NewRancherClient(&rancher.ClientOpts{
@@ -108,26 +99,78 @@ func (c *ContextAwareClient) getOrCreateClient(id string) *rancher.RancherClient
 }
 
 func (c *ContextAwareClient) Global() *rancher.RancherClient {
-	return c.getOrCreateClient("")
+	return c.getOrCreateClient("global")
 }
 
 func (c *ContextAwareClient) Env(id string) *rancher.RancherClient {
 	return c.getOrCreateClient(id)
 }
 
-func (c *ContextAwareClient) ListEtcdServices(envId string) []rancher.Service {
-	services := []rancher.Service{}
+func getContextFromURL(u string) string {
+	context := "global"
+	if v, err := url.Parse(u); err == nil {
+		pathVars := strings.Split(v.Path, "/")
+		if len(pathVars) >= 4 && pathVars[2] == "projects" {
+			context = pathVars[3]
+		}
+	}
+	return context
+}
+
+func updateContextURL(current, newContext string) string {
+	currentContext := "unknown"
+	newURL := current
+	if v, err := url.Parse(current); err == nil {
+		pathVars := strings.Split(v.Path, "/")
+		// deduce current context and strip from path
+		apiVersion := pathVars[1]
+		if len(pathVars) >= 4 && pathVars[2] == "projects" {
+			currentContext = pathVars[3]
+			pathVars = pathVars[4:]
+		} else {
+			currentContext = "global"
+			pathVars = pathVars[2:]
+		}
+		if currentContext != newContext {
+			switch newContext {
+			case "global":
+				pathVars = append([]string{"", apiVersion}, pathVars...)
+			default:
+				pathVars = append([]string{"", apiVersion, "projects", newContext}, pathVars...)
+			}
+			v.Path = strings.Join(pathVars, "/")
+			newURL = v.String()
+		}
+	}
+	return newURL
+}
+
+// If we retrieved an object with one client, we need to adjust hyperlinks in
+// order to modify/delete it with another client.
+func SetResourceContext(r *rancher.Resource, envId string) {
+	for name, value := range r.Links {
+		r.Links[name] = updateContextURL(value, envId)
+	}
+	for name, value := range r.Actions {
+		r.Actions[name] = updateContextURL(value, envId)
+	}
+}
+
+func (c *ContextAwareClient) ListEtcdServices(envId string) ([]rancher.Service, error) {
 	allServices, err := c.Env(envId).Service.List(&rancher.ListOpts{})
-	if err == nil {
-		for _, s := range allServices.Data {
-			if s.LaunchConfig != nil && s.LaunchConfig.Labels != nil {
-				if _, ok := s.LaunchConfig.Labels["io.rancher.operator"]; ok {
-					services = append(services, s)
-				}
+	if err != nil {
+		return nil, err
+	}
+
+	services := []rancher.Service{}
+	for _, s := range allServices.Data {
+		if s.LaunchConfig != nil && s.LaunchConfig.Labels != nil {
+			if _, ok := s.LaunchConfig.Labels["io.rancher.operator"]; ok {
+				services = append(services, s)
 			}
 		}
 	}
-	return services
+	return services, nil
 }
 
 //*** This should all be eliminated once upstream objects in go-rancher are fixed ***//
@@ -135,12 +178,16 @@ func (c *ContextAwareClient) ListEtcdServices(envId string) []rancher.Service {
 // We have to hack around some bugs in upstream json/yaml object serialization
 // where "nil values" don't get sent and consequently assume a non-nil default.
 
-func (c *ContextAwareClient) CreateService(envId string, service *Service) {
-	c.create(envId, "service", service)
+func (c *ContextAwareClient) CreateService(service *Service) error {
+	return c.create(service.AccountId, "service", service)
 }
 
-func (c *ContextAwareClient) UpdateService(envId string, service *Service) error {
-	return c.update(envId, "service", service)
+func (c *ContextAwareClient) UpdateService(service *Service) error {
+	return c.update(service.AccountId, "service", service)
+}
+
+func (c *ContextAwareClient) DeleteService(service *Service) error {
+	return c.delete(service.AccountId, "service", service)
 }
 
 func (c *ContextAwareClient) create(envId string, otype string, o interface{}) error {
@@ -153,6 +200,10 @@ func (c *ContextAwareClient) get(envId string, otype string, o interface{}) erro
 
 func (c *ContextAwareClient) update(envId string, otype string, o interface{}) error {
 	return c.send(envId, otype, o, "PUT")
+}
+
+func (c *ContextAwareClient) delete(envId string, otype string, o interface{}) error {
+	return c.send(envId, otype, o, "DELETE")
 }
 
 func (c *ContextAwareClient) send(envId string, otype string, createObj interface{}, method string) error {
