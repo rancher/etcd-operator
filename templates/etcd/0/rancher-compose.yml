@@ -52,8 +52,3 @@
     required: true
     default: true
     type: boolean
-services:
-  etcd:
-    # these values get ignored :,-(
-    scale: 0
-    start_on_create: false
