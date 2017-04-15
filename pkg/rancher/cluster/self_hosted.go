@@ -33,13 +33,14 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	newMemberName := etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter)
 	c.memberCounter++
 
-	peerURL := "http://$(MY_POD_IP):2380"
+	peerURL := "http://$(hostname -i):2380"
 	initialCluster := append(c.members.PeerURLPairs(), newMemberName+"="+peerURL)
 
-	pod := k8sutil.NewSelfHostedEtcdPod(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "existing", "", c.cluster.Spec, c.cluster.AsOwner())
-	pod = k8sutil.PodWithAddMemberInitContainer(pod, c.members.ClientURLs(), newMemberName, []string{peerURL}, c.cluster.Spec)
+	container := ranchutil.NewSelfHostedEtcdContainer(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "existing", "", c.cluster.Spec)
+	ranchutil.ContainerWithAddMemberCommand(container, c.members.ClientURLs(), newMemberName, []string{peerURL}, c.cluster.Spec)
+	ranchutil.ContainerWithSleepWaitNetwork(container)
 
-	_, err := c.config.KubeCli.CoreV1().Pods(c.cluster.Metadata.Namespace).Create(pod)
+	_, err := c.config.Client.Container.Create(container)
 	if err != nil {
 		return err
 	}
@@ -73,6 +74,8 @@ func (c *Cluster) newSelfHostedSeedMember() error {
 	initialCluster := []string{newMemberName + "=http://$(hostname -i):2380"}
 
 	container := ranchutil.NewSelfHostedEtcdContainer(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "new", uuid.New(), c.cluster.Spec)
+	ranchutil.ContainerWithSleepWaitNetwork(container)
+
 	_, err := c.config.Client.Container.Create(container)
 	if err != nil {
 		return err

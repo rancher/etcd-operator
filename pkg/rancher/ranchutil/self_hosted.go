@@ -17,24 +17,16 @@ const (
 	etcdLockPath               = "/var/lock/etcd.lock"
 )
 
-// func PodWithAddMemberInitContainer(p *v1.Pod, endpoints []string, name string, peerURLs []string, cs spec.ClusterSpec) *v1.Pod {
-//   containerSpec := []v1.Container{
-//     {
-//       Name:  "add-member",
-//       Image: EtcdImageName(cs.Version),
-//       Command: []string{
-//         "/bin/sh", "-ec",
-//         fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=%s member add %s --peer-urls=%s", strings.Join(endpoints, ","), name, strings.Join(peerURLs, ",")),
-//       },
-//     },
-//   }
-//   b, err := json.Marshal(containerSpec)
-//   if err != nil {
-//     panic(err)
-//   }
-//   p.Annotations[v1.PodInitContainersBetaAnnotationKey] = string(b)
-//   return p
-// }
+func ContainerWithSleepWaitNetwork(c *rancher.Container) {
+	c.Command[len(c.Command)-1] = fmt.Sprintf("sleep 5; %s", c.Command[len(c.Command)-1])
+}
+
+func ContainerWithAddMemberCommand(c *rancher.Container, endpoints []string, name string, peerURLs []string, cs spec.ClusterSpec) {
+	memberAddCommand := fmt.Sprintf("ETCDCTL_API=3 etcdctl --endpoints=%s member add %s --peer-urls=%s",
+		strings.Join(endpoints, ","), name, strings.Join(peerURLs, ","))
+
+	c.Command[len(c.Command)-1] = fmt.Sprintf("%s; %s", memberAddCommand, c.Command[len(c.Command)-1])
+}
 
 func NewSelfHostedEtcdContainer(name string, initialCluster []string, clusterName, ns, state, token string, cs spec.ClusterSpec) *rancher.Container {
 	selfHostedDataDir := path.Join(etcdVolumeMountDir, ns+"-"+name)
@@ -56,8 +48,8 @@ func NewSelfHostedEtcdContainer(name string, initialCluster []string, clusterNam
 	// Thus, we make etcd pod flock first before starting etcd server.
 	c.Ports = nil
 	c.DataVolumes = append(c.DataVolumes, fmt.Sprintf("%s:%s", varLockVolumeName, varLockDir))
-	c.Command = []string{"sh", "-ec", fmt.Sprintf("flock %s -c \"%s\"", etcdLockPath, commands)}
-	c.NetworkMode = "host"
+	c.Command = []string{"sh", "-ec", fmt.Sprintf("flock %s -c '%s'", etcdLockPath, commands)}
+	c.NetworkMode = "ipsec"
 	c.Name = name
 	c.Labels["app"] = "etcd"
 	c.Labels["name"] = name

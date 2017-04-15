@@ -3,6 +3,7 @@ services:
   etcd-operator:
     image: llparse/etcd-operator:dev
     command:
+    - --debug=${DEBUG}
     - rancher
     - operator
     - --analytics=${ANALYTICS}

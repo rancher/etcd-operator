@@ -264,6 +264,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 			}
 
 			running, pending, err := c.pollContainers()
+			c.logger.Debugf("skip reconciliation: running (%v), pending (%v)", ranchutil.GetContainerNames(running), ranchutil.GetContainerNames(pending))
 			if err != nil {
 				c.logger.Errorf("fail to poll containers: %v", err)
 			}

@@ -8,7 +8,7 @@ import (
 
 func etcdVolumeMounts() []string {
 	return []string{
-		fmt.Sprintf("etcd-data:%s", etcdVolumeMountDir),
+	//fmt.Sprintf("etcd-data:%s", etcdVolumeMountDir),
 	}
 }
 

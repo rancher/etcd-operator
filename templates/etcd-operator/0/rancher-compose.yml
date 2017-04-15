@@ -29,6 +29,12 @@
     required: true
     default: 10m0s
     type: string
+  - variable: DEBUG
+    label: Debug Mode
+    description: Enable debug level logging
+    required: true
+    default: false
+    type: boolean
   - variable: CHAOS_LEVEL
     label: Chaos Level
     description: DO NOT USE IN PRODUCTION. Level of chaos injected into the managed etcd clusters.
