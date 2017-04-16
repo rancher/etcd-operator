@@ -57,7 +57,7 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	return nil
 }
 
-func containersToMemberSet(containers []*rancher.Container, selfHosted *spec.SelfHostedPolicy) etcdutil.MemberSet {
+func containersToMemberSet(containers []rancher.Container, selfHosted *spec.SelfHostedPolicy) etcdutil.MemberSet {
 	members := etcdutil.MemberSet{}
 	for _, container := range containers {
 		m := &etcdutil.Member{Name: container.Name, Namespace: container.AccountId}

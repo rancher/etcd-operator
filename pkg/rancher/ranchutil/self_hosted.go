@@ -47,7 +47,7 @@ func NewSelfHostedEtcdContainer(name string, initialCluster []string, clusterNam
 	// However, the scheduled pod will fail when running on node because resources (e.g. host port) are taken.
 	// Thus, we make etcd pod flock first before starting etcd server.
 	c.Ports = nil
-	c.DataVolumes = append(c.DataVolumes, fmt.Sprintf("%s:%s", varLockVolumeName, varLockDir))
+	//c.DataVolumes = append(c.DataVolumes, fmt.Sprintf("%s:%s", varLockVolumeName, varLockDir))
 	c.Command = []string{"sh", "-ec", fmt.Sprintf("flock %s -c '%s'", etcdLockPath, commands)}
 	c.NetworkMode = "ipsec"
 	c.Name = name
@@ -57,7 +57,9 @@ func NewSelfHostedEtcdContainer(name string, initialCluster []string, clusterNam
 
 	SetEtcdVersion(&c, cs.Version)
 
-	//pod = PodWithAntiAffinity(pod, clusterName)
+	if cs.Pod.AntiAffinity {
+		ContainerWithAntiAffinity(&c, clusterName)
+	}
 	//if cs.Pod != nil && len(cs.Pod.NodeSelector) != 0 {
 	//  pod = PodWithNodeSelector(pod, cs.Pod.NodeSelector)
 	//}

@@ -101,6 +101,7 @@ func main() {
 			if c.Bool("debug") {
 				log.SetLevel(log.DebugLevel)
 			}
+			log.SetFormatter(&log.TextFormatter{ForceColors: true})
 			return nil
 		},
 		Commands: []cli.Command{

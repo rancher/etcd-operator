@@ -31,7 +31,7 @@ import (
 // reconcile reconciles cluster current state to desired state specified by spec.
 // - it tries to reconcile the cluster to desired size.
 // - if the cluster needs for upgrade, it tries to upgrade old member one by one.
-func (c *Cluster) reconcile(containers []*rancher.Container) error {
+func (c *Cluster) reconcile(containers []rancher.Container) error {
 	c.logger.Infoln("Start reconciling")
 	defer c.logger.Infoln("Finish reconciling")
 
@@ -75,7 +75,7 @@ func (c *Cluster) reconcileMembers(running etcdutil.MemberSet) error {
 	if unknownMembers.Size() > 0 {
 		c.logger.Infof("removing unexpected containers: %v", unknownMembers)
 		for _, m := range unknownMembers {
-			if err := c.removePodAndService(m.Name); err != nil {
+			if err := c.removeContainer(m.Name); err != nil {
 				return err
 			}
 		}
@@ -170,7 +170,7 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 		}
 	}
 	c.members.Remove(toRemove.Name)
-	if err := c.removePodAndService(toRemove.Name); err != nil {
+	if err := c.removeContainer(toRemove.Name); err != nil {
 		return err
 	}
 	c.logger.Infof("removed member (%v) with ID (%d)", toRemove.Name, toRemove.ID)
@@ -215,7 +215,7 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	}
 
 	for _, m := range left {
-		err := c.removePodAndService(m.Name)
+		err := c.removeContainer(m.Name)
 		if err != nil {
 			return err
 		}
@@ -223,13 +223,13 @@ func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	return c.recover()
 }
 
-func needUpgrade(containers []*rancher.Container, cs spec.ClusterSpec) bool {
+func needUpgrade(containers []rancher.Container, cs spec.ClusterSpec) bool {
 	return len(containers) == cs.Size && pickOneOldMember(containers, cs.Version) != nil
 }
 
-func pickOneOldMember(containers []*rancher.Container, newVersion string) *etcdutil.Member {
+func pickOneOldMember(containers []rancher.Container, newVersion string) *etcdutil.Member {
 	for _, container := range containers {
-		if ranchutil.GetEtcdVersion(container) == newVersion {
+		if ranchutil.GetEtcdVersion(&container) == newVersion {
 			continue
 		}
 		return &etcdutil.Member{Name: container.Name, Namespace: container.AccountId}

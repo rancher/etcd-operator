@@ -170,7 +170,6 @@ func (c *Cluster) create() error {
 }
 
 func (c *Cluster) prepareSeedMember() error {
-	c.logger.Infof("prepareSeedMember()")
 	c.status.AppendScalingUpCondition(0, c.cluster.Spec.Size)
 
 	var err error
@@ -264,7 +263,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 			}
 
 			running, pending, err := c.pollContainers()
-			c.logger.Debugf("skip reconciliation: running (%v), pending (%v)", ranchutil.GetContainerNames(running), ranchutil.GetContainerNames(pending))
+			c.logger.Debugf("current state: running (%v), pending (%v)", ranchutil.GetContainerNames(running), ranchutil.GetContainerNames(pending))
 			if err != nil {
 				c.logger.Errorf("fail to poll containers: %v", err)
 			}
@@ -395,26 +394,21 @@ func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, stat
 	return nil
 }
 
-func (c *Cluster) removePodAndService(name string) error {
-	ns := c.cluster.Metadata.Namespace
-	err := c.config.KubeCli.Core().Services(ns).Delete(name, nil)
+func (c *Cluster) removeContainer(name string) error {
+	// Listing by name doesn't work, pull all containers and filter
+	coll, err := c.config.Client.Container.List(&rancher.ListOpts{})
 	if err != nil {
-		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
-			return err
+		return err
+	}
+	for _, n := range coll.Data {
+		if n.Name == name {
+			return c.config.Client.Container.Delete(&n)
 		}
 	}
-
-	opts := v1.NewDeleteOptions(podTerminationGracePeriod)
-	err = c.config.KubeCli.Core().Pods(ns).Delete(name, opts)
-	if err != nil {
-		if !k8sutil.IsKubernetesResourceNotFoundError(err) {
-			return err
-		}
-	}
-	return nil
+	return fmt.Errorf("container not found: %s", name)
 }
 
-func containerHasLabel(c *rancher.Container, name, value string) bool {
+func containerHasLabel(c rancher.Container, name, value string) bool {
 	if val, ok := c.Labels[name]; ok {
 		if val.(string) == value {
 			return true
@@ -423,7 +417,7 @@ func containerHasLabel(c *rancher.Container, name, value string) bool {
 	return false
 }
 
-func (c *Cluster) pollContainers() (running, pending []*rancher.Container, err error) {
+func (c *Cluster) pollContainers() (running, pending []rancher.Container, err error) {
 	containerColl, err := c.config.Client.Container.List(&rancher.ListOpts{})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list running containers: %v", err)
@@ -442,7 +436,7 @@ func (c *Cluster) pollContainers() (running, pending []*rancher.Container, err e
 	for _, n := range containerColl.Data {
 		// ignore containers not belonging to this service
 		// we ideally would be able to filter the List() operation
-		if !containerHasLabel(&n, "cluster", c.cluster.Metadata.Name) {
+		if !containerHasLabel(n, "cluster", c.cluster.Metadata.Name) {
 			continue
 		}
 		if n.NetworkMode == "host" {
@@ -452,12 +446,10 @@ func (c *Cluster) pollContainers() (running, pending []*rancher.Container, err e
 		}
 		switch n.State {
 		case "running":
-			running = append(running, &n)
+			running = append(running, n)
 		default:
-			pending = append(pending, &n)
+			pending = append(pending, n)
 		}
-
-		c.logger.Debugf("container: %s", n.Name)
 	}
 	return running, pending, nil
 }
@@ -493,8 +485,8 @@ func (c *Cluster) pollPods() (running, pending []*v1.Pod, err error) {
 	return running, pending, nil
 }
 
-func (c *Cluster) updateMemberStatus(containers []*rancher.Container) {
-	var ready, unready []*rancher.Container
+func (c *Cluster) updateMemberStatus(containers []rancher.Container) {
+	var ready, unready []rancher.Container
 	for _, container := range containers {
 		// TODO: Change to URL struct for TLS integration
 		url := fmt.Sprintf("http://%s:2379", container.PrimaryIpAddress)

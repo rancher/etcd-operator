@@ -32,7 +32,7 @@ func SetEtcdVersion(c *rancher.Container, version string) {
 	c.Labels["version"] = version
 }
 
-func GetContainerNames(containers []*rancher.Container) []string {
+func GetContainerNames(containers []rancher.Container) []string {
 	res := []string{}
 	if len(containers) == 0 {
 		return nil
