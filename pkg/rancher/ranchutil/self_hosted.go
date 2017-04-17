@@ -29,7 +29,7 @@ func ContainerWithAddMemberCommand(c *rancher.Container, endpoints []string, nam
 	c.Command[len(c.Command)-1] = fmt.Sprintf("%s; %s", memberAddCommand, c.Command[len(c.Command)-1])
 }
 
-func newEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, state, token, networkMode, theDataDir string, cs spec.ClusterSpec) *rancher.Container {
+func newEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, state, token, theDataDir string, cs spec.ClusterSpec) *rancher.Container {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
 		"--listen-peer-urls=http://0.0.0.0:2380 --listen-client-urls=http://0.0.0.0:2379 --advertise-client-urls=%s "+
 		"--initial-cluster=%s --initial-cluster-state=%s --metrics extensive",
@@ -43,29 +43,27 @@ func newEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, 
 	c.Ports = nil
 	//c.DataVolumes = append(c.DataVolumes, fmt.Sprintf("%s:%s", varLockVolumeName, varLockDir))
 	c.Command = []string{"sh", "-ec", fmt.Sprintf("flock %s -c '%s'", etcdLockPath, commands)}
-	// FIXME should be 'host'
-	c.NetworkMode = networkMode
 	c.Name = m.Name
 	c.Labels["app"] = "etcd"
 	c.Labels["name"] = m.Name
 	c.Labels["cluster"] = clusterName
 
 	SetEtcdVersion(&c, cs.Version)
-
-	if cs.Pod != nil {
-		if cs.Pod.AntiAffinity {
-			ContainerWithAntiAffinity(&c, clusterName)
-		}
-		if len(cs.Pod.NodeSelector) != 0 {
-			ContainerWithNodeSelector(&c, cs.Pod.NodeSelector)
-		}
-	}
-
 	return &c
 }
 
 func NewEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec) *rancher.Container {
-	return newEtcdContainer(m, initialCluster, clusterName, state, token, "ipsec", dataDir, cs)
+	c := newEtcdContainer(m, initialCluster, clusterName, state, token, dataDir, cs)
+	c.NetworkMode = "ipsec"
+	if cs.Pod != nil {
+		if cs.Pod.AntiAffinity {
+			ContainerWithAntiAffinity(c, clusterName)
+		}
+		if len(cs.Pod.NodeSelector) != 0 {
+			ContainerWithNodeSelector(c, cs.Pod.NodeSelector)
+		}
+	}
+	return c
 }
 
 func NewSelfHostedEtcdContainer(name string, initialCluster []string, clusterName, ns, state, token string, cs spec.ClusterSpec) *rancher.Container {
@@ -76,7 +74,13 @@ func NewSelfHostedEtcdContainer(name string, initialCluster []string, clusterNam
 		PeerURLs:   []string{"http://$(wget -q -O - icanhazip.com):2380"},
 	}
 	selfHostedDataDir := path.Join(etcdVolumeMountDir, ns+"-"+name)
-	c := newEtcdContainer(m, initialCluster, clusterName, state, token, "host", selfHostedDataDir, cs)
+	c := newEtcdContainer(m, initialCluster, clusterName, state, token, selfHostedDataDir, cs)
+	c.NetworkMode = "host"
 	c.RestartPolicy.Name = "always"
+
+	ContainerWithAntiAffinity(c, clusterName)
+	if cs.Pod != nil && len(cs.Pod.NodeSelector) != 0 {
+		ContainerWithNodeSelector(c, cs.Pod.NodeSelector)
+	}
 	return c
 }

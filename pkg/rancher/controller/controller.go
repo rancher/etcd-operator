@@ -217,7 +217,7 @@ func (c *Controller) findAllClusters() (map[string]spec.Cluster, error) {
 				log.Warnf("couldn't update service: %s", err)
 			}
 		}
-		
+
 		cluster := ranchutil.ClusterFromService(s)
 		//c.log.Debugf("cluster: %+v", cluster)
 		clusters[cluster.Metadata.Name] = cluster
