@@ -204,18 +204,20 @@ func (c *Controller) findAllClusters() (map[string]spec.Cluster, error) {
 
 	clusters := make(map[string]spec.Cluster)
 	for _, s := range services {
+
 		// we need to update each service proactively to work around
 		// bugs/limitation of rancher ui service creation
 		if s.Scale > 0 {
-			s.Scale = 0
-			s.SelectorContainer = fmt.Sprintf("app=etcd,uuid=%s", s.Uuid)
+			s2 := s
+			s2.SelectorContainer = fmt.Sprintf("app=etcd,cluster=%s", s.Id)
+			s2.Scale = 0
 			// we have to adjust the context here from global -> environment to make changes
 			ranchutil.SetResourceContext(&s.Resource, s.AccountId)
-			if _, err := c.config.Client.Env(s.AccountId).Service.Update(&s, nil); err != nil {
+			if _, err := c.config.Client.Env(s.AccountId).Service.Update(&s, &s2); err != nil {
 				log.Warnf("couldn't update service: %s", err)
 			}
 		}
-
+		
 		cluster := ranchutil.ClusterFromService(s)
 		//c.log.Debugf("cluster: %+v", cluster)
 		clusters[cluster.Metadata.Name] = cluster
