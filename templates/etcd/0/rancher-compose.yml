@@ -52,6 +52,11 @@
     required: true
     default: true
     type: boolean
+  - variable: NODE_SELECTOR
+    label: Node Selector
+    description: A comma-delimited list of label k-v pairs that a candidate node/host must have
+    required: false
+    type: string
   - variable: SELF_HOSTED
     label: Self-Hosted
     description: Run etcd on host network without cattle dependencies. Anti-Affinity is implicitly enabled for self-hosted clusters.

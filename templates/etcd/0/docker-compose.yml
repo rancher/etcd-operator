@@ -8,6 +8,7 @@ services:
       io.rancher.operator.etcd.version: ${VERSION}
       io.rancher.operator.etcd.paused: ${PAUSED}
       io.rancher.operator.etcd.antiaffinity: ${ANTI_AFFINITY}
+      io.rancher.operator.etcd.nodeselector: ${NODE_SELECTOR}
       io.rancher.operator.etcd.selfhosted: ${SELF_HOSTED}
       # critically important, prevents troll containers
       io.rancher.service.selector.container: nevergonnagiveyouup=begone

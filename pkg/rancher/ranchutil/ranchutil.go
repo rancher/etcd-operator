@@ -80,6 +80,20 @@ func labelString(s rancher.Service, label string, def string) string {
 	return l
 }
 
+func labelStringMap(s rancher.Service, label string, def map[string]string) map[string]string {
+	m := make(map[string]string)
+	for _, entry := range strings.Split(labelString(s, label, ""), ",") {
+		kv := strings.Split(entry, "=")
+		if len(kv) == 2 {
+			m[kv[0]] = kv[1]
+		}
+	}
+	if len(m) == 0 {
+		return def
+	}
+	return m
+}
+
 func labelInt(s rancher.Service, label string, def int) int {
 	l := getServiceLabelValue(s, label)
 	if val, err := strconv.Atoi(l); err == nil {
@@ -88,23 +102,21 @@ func labelInt(s rancher.Service, label string, def int) int {
 	return def
 }
 
-func ClusterFromService(s rancher.Service) spec.Cluster {
-	nodeSelector := map[string]string{}
-	hostAffinities := getServiceLabelValue(s, "io.rancher.scheduler.affinity:host_label")
-	if hostAffinities != "" {
-		for _, label := range strings.Split(hostAffinities, ",") {
-			kv := strings.Split(label, "=")
-			if len(kv) == 2 {
-				nodeSelector[kv[0]] = kv[1]
-			}
-		}
-	}
-
-	var selfHostedPolicy *spec.SelfHostedPolicy
+func getSelfHostedPolicy(s rancher.Service) *spec.SelfHostedPolicy {
 	if labelBool(s, opLabel("selfhosted"), false) {
-		selfHostedPolicy = &spec.SelfHostedPolicy{}
+		return &spec.SelfHostedPolicy{}
 	}
+	return nil
+}
 
+func getPodPolicy(s rancher.Service) *spec.PodPolicy {
+	return &spec.PodPolicy{
+		AntiAffinity: labelBool(s, opLabel("antiaffinity"), false),
+		NodeSelector: labelStringMap(s, opLabel("nodeselector"), map[string]string{}),
+	}
+}
+
+func ClusterFromService(s rancher.Service) spec.Cluster {
 	return spec.Cluster{
 		Metadata: v1.ObjectMeta{
 			Name:      s.Id,
@@ -114,16 +126,12 @@ func ClusterFromService(s rancher.Service) spec.Cluster {
 			Size:    labelInt(s, opLabel("size"), 1),
 			Version: labelString(s, opLabel("version"), "3.1.4"),
 			Paused:  labelBool(s, opLabel("paused"), false),
-			Pod: &spec.PodPolicy{
-				NodeSelector: nodeSelector,
-				AntiAffinity: labelBool(s, opLabel("antiaffinity"), false),
-				// TODO resource constraints?
-			},
+			Pod:     getPodPolicy(s),
 			//Backup: &spec.BackupPolicy{},
 			// must be nil if not set, don't create empty object
 			//Restore:    &spec.RestorePolicy{},
 			// must be nil if not set
-			SelfHosted: selfHostedPolicy,
+			SelfHosted: getSelfHostedPolicy(s),
 			//TLS: &spec.TLSPolicy{},
 		},
 	}
