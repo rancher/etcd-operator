@@ -30,3 +30,21 @@ func ContainerWithAntiAffinity(c *rancher.Container, clusterName string) {
 	c.Labels["io.rancher.scheduler.affinity:container_label_ne"] =
 		fmt.Sprintf("cluster=%s", clusterName)
 }
+
+func ContainerWithNodeSelector(c *rancher.Container, nodeSelector map[string]string) {
+	newAffinity := ""
+	for k, v := range nodeSelector {
+		if newAffinity != "" {
+			newAffinity = newAffinity + ","
+		}
+		newAffinity = newAffinity + fmt.Sprintf("%s=%s", k, v)
+	}
+
+	hostAffinityLabel := "io.rancher.scheduler.affinity:host_label"
+	existingAffinity, ok := c.Labels[hostAffinityLabel]
+	if ok {
+		c.Labels[hostAffinityLabel] = fmt.Sprintf("%s,%s", existingAffinity, newAffinity)
+	} else {
+		c.Labels[hostAffinityLabel] = newAffinity
+	}
+}

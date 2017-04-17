@@ -27,8 +27,6 @@ type Member struct {
 	Name string
 	// Kubernetes namespace this member runs in.
 	Namespace string
-	// Rancher id needed to lookup container
-	RancherID string
 	// ID field can be 0, which is unknown ID.
 	// We know the ID of a member when we get the member information from etcd,
 	// but not from Kubernetes pod list.

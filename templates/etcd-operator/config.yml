@@ -1,5 +1,5 @@
 name: Etcd Operator
 description: >
-  Configure and manage etcd clusters using declarative configuraiton.
+  Configure and manage etcd clusters using declarative configuration
 version: v0.2.4-rancher
 category: Operator

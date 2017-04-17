@@ -59,7 +59,7 @@
     type: string
   - variable: SELF_HOSTED
     label: Self-Hosted
-    description: Run etcd on host network without cattle dependencies. Anti-Affinity is implicitly enabled for self-hosted clusters.
+    description: Run etcd without cattle infrastructure services
     required: true
     default: false
     type: boolean

@@ -29,11 +29,12 @@ func ContainerWithAddMemberCommand(c *rancher.Container, endpoints []string, nam
 	c.Command[len(c.Command)-1] = fmt.Sprintf("%s; %s", memberAddCommand, c.Command[len(c.Command)-1])
 }
 
-func NewEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec) *rancher.Container {
+func newEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, state, token, networkMode, theDataDir string, cs spec.ClusterSpec) *rancher.Container {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
 		"--listen-peer-urls=http://0.0.0.0:2380 --listen-client-urls=http://0.0.0.0:2379 --advertise-client-urls=%s "+
-		"--initial-cluster=%s --initial-cluster-state=%s",
-		dataDir, m.Name, m.PeerAddr(), m.ClientAddr(), strings.Join(initialCluster, ","), state)
+		"--initial-cluster=%s --initial-cluster-state=%s --metrics extensive",
+		theDataDir, m.Name, m.PeerAddr(), m.ClientAddr(), strings.Join(initialCluster, ","), state)
+
 	if state == "new" {
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
 	}
@@ -44,7 +45,7 @@ func NewEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, 
 	//c.DataVolumes = append(c.DataVolumes, fmt.Sprintf("%s:%s", varLockVolumeName, varLockDir))
 	c.Command = []string{"sh", "-ec", fmt.Sprintf("flock %s -c '%s'", etcdLockPath, commands)}
 	// FIXME should be 'host'
-	c.NetworkMode = "ipsec"
+	c.NetworkMode = networkMode
 	c.Name = m.Name
 	c.Labels["app"] = "etcd"
 	c.Labels["name"] = m.Name
@@ -52,58 +53,29 @@ func NewEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, 
 
 	SetEtcdVersion(&c, cs.Version)
 
-	if cs.Pod.AntiAffinity {
-		ContainerWithAntiAffinity(&c, clusterName)
-	}
-
 	if cs.Pod != nil {
 		if cs.Pod.AntiAffinity {
 			ContainerWithAntiAffinity(&c, clusterName)
 		}
-		// if len(cs.Pod.NodeSelector) != 0 {
-		// 	ContainerWithNodeSelector(&c, cs.Pod.NodeSelector)
-		// 	//pod = PodWithNodeSelector(pod, cs.Pod.NodeSelector)
-		// }
+		if len(cs.Pod.NodeSelector) != 0 {
+			ContainerWithNodeSelector(&c, cs.Pod.NodeSelector)
+		}
 	}
 
 	return &c
 }
 
+func NewEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec) *rancher.Container {
+	return newEtcdContainer(m, initialCluster, clusterName, state, token, "ipsec", dataDir, cs)
+}
+
 func NewSelfHostedEtcdContainer(name string, initialCluster []string, clusterName, ns, state, token string, cs spec.ClusterSpec) *rancher.Container {
+	m := &etcdutil.Member{
+		Name:       name,
+		Namespace:  ns,
+		ClientURLs: []string{"http://$(hostname -i):2379"},
+		PeerURLs:   []string{"http://$(hostname -i):2380"},
+	}
 	selfHostedDataDir := path.Join(etcdVolumeMountDir, ns+"-"+name)
-	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=http://$(hostname -i):2380 "+
-		"--listen-peer-urls=http://0.0.0.0:2380 --listen-client-urls=http://0.0.0.0:2379 --advertise-client-urls=http://$(hostname -i):2379 "+
-		"--initial-cluster=%s --initial-cluster-state=%s --metrics extensive",
-		selfHostedDataDir, name, strings.Join(initialCluster, ","), state)
-
-	if state == "new" {
-		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, token)
-	}
-
-	c := etcdContainer(commands, cs.Version)
-	// On node reboot, there will be two copies of etcd pod: scheduled and checkpointed one.
-	// Checkpointed one will start first. But then the scheduler will detect host port conflict,
-	// and set the pod (in APIServer) failed. This further affects etcd service by removing the endpoints.
-	// To make scheduling phase succeed, we work around by removing ports in spec.
-	// However, the scheduled pod will fail when running on node because resources (e.g. host port) are taken.
-	// Thus, we make etcd pod flock first before starting etcd server.
-	c.Ports = nil
-	//c.DataVolumes = append(c.DataVolumes, fmt.Sprintf("%s:%s", varLockVolumeName, varLockDir))
-	c.Command = []string{"sh", "-ec", fmt.Sprintf("flock %s -c '%s'", etcdLockPath, commands)}
-	// FIXME should be 'host'
-	c.NetworkMode = "ipsec"
-	c.Name = name
-	c.Labels["app"] = "etcd"
-	c.Labels["name"] = name
-	c.Labels["cluster"] = clusterName
-
-	SetEtcdVersion(&c, cs.Version)
-
-	if cs.Pod.AntiAffinity {
-		ContainerWithAntiAffinity(&c, clusterName)
-	}
-	//if cs.Pod != nil && len(cs.Pod.NodeSelector) != 0 {
-	//  pod = PodWithNodeSelector(pod, cs.Pod.NodeSelector)
-	//}
-	return &c
+	return newEtcdContainer(m, initialCluster, clusterName, state, token, "ipsec", selfHostedDataDir, cs)
 }
