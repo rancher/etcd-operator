@@ -33,7 +33,7 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	newMemberName := etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter)
 	c.memberCounter++
 
-	peerURL := "http://$(hostname -i):2380"
+	peerURL := "http://$(wget -q -O - icanhazip.com):2380"
 	initialCluster := append(c.members.PeerURLPairs(), newMemberName+"="+peerURL)
 
 	container := ranchutil.NewSelfHostedEtcdContainer(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "existing", "", c.cluster.Spec)
@@ -71,7 +71,7 @@ func (c *Cluster) addOneSelfHostedMember() error {
 func (c *Cluster) newSelfHostedSeedMember() error {
 	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Metadata.Name, c.memberCounter)
 	c.memberCounter++
-	initialCluster := []string{newMemberName + "=http://$(hostname -i):2380"}
+	initialCluster := []string{newMemberName + "=http://$(wget -q -O - icanhazip.com):2380"}
 
 	container := ranchutil.NewSelfHostedEtcdContainer(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "new", uuid.New(), c.cluster.Spec)
 	ranchutil.ContainerWithSleepWaitNetwork(container)

@@ -15,5 +15,6 @@ services:
       CATTLE_ACCESS_KEY: ${CATTLE_ACCESS_KEY}
       CATTLE_SECRET_KEY: ${CATTLE_SECRET_KEY}
     labels:
+      io.rancher.container.dns: 'true'
       io.rancher.container.pull_image: always
     network_mode: host

@@ -327,6 +327,7 @@ func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 	m := &etcdutil.Member{
 		Name:      etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter),
 		Namespace: c.cluster.Metadata.Namespace,
+		Provider:  "rancher",
 	}
 	ms := etcdutil.NewMemberSet(m)
 	if err := c.createPod(ms, m, "new", recoverFromBackup); err != nil {

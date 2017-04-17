@@ -40,7 +40,6 @@ func newEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, 
 	}
 
 	c := etcdContainer(commands, cs.Version)
-	c.RestartPolicy.Name = "never"
 	c.Ports = nil
 	//c.DataVolumes = append(c.DataVolumes, fmt.Sprintf("%s:%s", varLockVolumeName, varLockDir))
 	c.Command = []string{"sh", "-ec", fmt.Sprintf("flock %s -c '%s'", etcdLockPath, commands)}
@@ -73,9 +72,11 @@ func NewSelfHostedEtcdContainer(name string, initialCluster []string, clusterNam
 	m := &etcdutil.Member{
 		Name:       name,
 		Namespace:  ns,
-		ClientURLs: []string{"http://$(hostname -i):2379"},
-		PeerURLs:   []string{"http://$(hostname -i):2380"},
+		ClientURLs: []string{"http://$(wget -q -O - icanhazip.com):2379"},
+		PeerURLs:   []string{"http://$(wget -q -O - icanhazip.com):2380"},
 	}
 	selfHostedDataDir := path.Join(etcdVolumeMountDir, ns+"-"+name)
-	return newEtcdContainer(m, initialCluster, clusterName, state, token, "ipsec", selfHostedDataDir, cs)
+	c := newEtcdContainer(m, initialCluster, clusterName, state, token, "host", selfHostedDataDir, cs)
+	c.RestartPolicy.Name = "always"
+	return c
 }

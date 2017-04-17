@@ -51,6 +51,7 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 			ID:         m.ID,
 			ClientURLs: m.ClientURLs,
 			PeerURLs:   m.PeerURLs,
+			Provider:   "rancher",
 		}
 	}
 	c.members = members
@@ -60,7 +61,7 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 func containersToMemberSet(containers []rancher.Container, selfHosted *spec.SelfHostedPolicy) etcdutil.MemberSet {
 	members := etcdutil.MemberSet{}
 	for _, container := range containers {
-		m := &etcdutil.Member{Name: container.Name, Namespace: container.AccountId}
+		m := &etcdutil.Member{Name: container.Name, Namespace: container.AccountId, Provider: "rancher"}
 		if selfHosted != nil {
 			m.ClientURLs = []string{"http://" + container.PrimaryIpAddress + ":2379"}
 			m.PeerURLs = []string{"http://" + container.PrimaryIpAddress + ":2380"}

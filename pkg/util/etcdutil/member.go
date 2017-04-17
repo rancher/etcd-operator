@@ -36,10 +36,17 @@ type Member struct {
 	PeerURLs []string
 	// ClientURLs is only used for self-hosted setup.
 	ClientURLs []string
+	// orchestration provider (kubernetes, rancher)
+	Provider string
 }
 
 func (m *Member) fqdn() string {
-	return fmt.Sprintf("%s.%s.%s.svc.cluster.local", m.Name, clusterNameFromMemberName(m.Name), m.Namespace)
+	switch m.Provider {
+	case "rancher":
+		return fmt.Sprintf("%s.rancher.internal", m.Name)
+	default:
+		return fmt.Sprintf("%s.%s.%s.svc.cluster.local", m.Name, clusterNameFromMemberName(m.Name), m.Namespace)
+	}
 }
 
 func (m *Member) ClientAddr() string {

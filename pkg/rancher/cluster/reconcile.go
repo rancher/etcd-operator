@@ -126,7 +126,7 @@ func (c *Cluster) addOneMember() error {
 	defer etcdcli.Close()
 
 	newMemberName := etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter)
-	newMember := &etcdutil.Member{Name: newMemberName, Namespace: c.cluster.Metadata.Namespace}
+	newMember := &etcdutil.Member{Name: newMemberName, Namespace: c.cluster.Metadata.Namespace, Provider: "rancher"}
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerAddr()})
 	if err != nil {
@@ -232,7 +232,7 @@ func pickOneOldMember(containers []rancher.Container, newVersion string) *etcdut
 		if ranchutil.GetEtcdVersion(&container) == newVersion {
 			continue
 		}
-		return &etcdutil.Member{Name: container.Name, Namespace: container.AccountId}
+		return &etcdutil.Member{Name: container.Name, Namespace: container.AccountId, Provider: "rancher"}
 	}
 	return nil
 }
