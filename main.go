@@ -92,6 +92,10 @@ func main() {
 		Version: version.Version,
 		Flags: []cli.Flag{
 			cli.BoolFlag{
+				Name:  "color",
+				Usage: "Force colored logging",
+			},
+			cli.BoolFlag{
 				Name:  "debug",
 				Usage: "Enable debug logging",
 			},
@@ -101,7 +105,9 @@ func main() {
 			if c.Bool("debug") {
 				log.SetLevel(log.DebugLevel)
 			}
-			log.SetFormatter(&log.TextFormatter{ForceColors: true})
+			if c.Bool("color") {
+				log.SetFormatter(&log.TextFormatter{ForceColors: true})
+			}
 			return nil
 		},
 		Commands: []cli.Command{

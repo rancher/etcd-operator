@@ -3,6 +3,7 @@ services:
   etcd-operator:
     image: llparse/etcd-operator:dev
     command:
+    - --color=${COLOR}
     - --debug=${DEBUG}
     - rancher
     - operator

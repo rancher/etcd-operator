@@ -29,6 +29,12 @@
     required: true
     default: 10m0s
     type: string
+  - variable: COLOR
+    label: Colored Logs
+    description: Forcibly enable colored logging in console. This looks pretty but makes parsing logs slightly more difficult.
+    required: true
+    default: false
+    type: boolean
   - variable: DEBUG
     label: Debug Mode
     description: Enable debug level logging
