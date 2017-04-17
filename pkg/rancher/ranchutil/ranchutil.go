@@ -100,6 +100,11 @@ func ClusterFromService(s rancher.Service) spec.Cluster {
 		}
 	}
 
+	var selfHostedPolicy *spec.SelfHostedPolicy
+	if labelBool(s, opLabel("selfhosted"), false) {
+		selfHostedPolicy = &spec.SelfHostedPolicy{}
+	}
+
 	return spec.Cluster{
 		Metadata: v1.ObjectMeta{
 			Name:      s.Id,
@@ -114,11 +119,12 @@ func ClusterFromService(s rancher.Service) spec.Cluster {
 				AntiAffinity: labelBool(s, opLabel("antiaffinity"), false),
 				// TODO resource constraints?
 			},
-			Backup: &spec.BackupPolicy{},
+			//Backup: &spec.BackupPolicy{},
 			// must be nil if not set, don't create empty object
 			//Restore:    &spec.RestorePolicy{},
-			SelfHosted: &spec.SelfHostedPolicy{},
-			TLS:        &spec.TLSPolicy{},
+			// must be nil if not set
+			SelfHosted: selfHostedPolicy,
+			//TLS: &spec.TLSPolicy{},
 		},
 	}
 }
@@ -130,28 +136,5 @@ func NewStack(name string, desc string) *rancher.Stack {
 		Group:         desc,
 		StartOnCreate: true,
 		System:        false,
-	}
-}
-
-// FIXME delete
-func NewEtcdService(name string, stackID string) *Service {
-	return &Service{
-		Description: "managed by etcd operator",
-		LaunchConfig: &rancher.LaunchConfig{
-			ImageUuid: "docker:quay.io/coreos/etcd:v3.1.5",
-			Labels: map[string]interface{}{
-				"io.rancher.scheduler.affinity:container_label_ne": opLabel("name") + "=" + name,
-				"io.rancher.service.selector.link":                 opLabel("name") + "=" + name,
-				"io.rancher.operator":                              "etcd",
-				opLabel("name"):                                    name,
-				opLabel("scale"):                                   "3",
-				opLabel("version"):                                 "v3.1.5",
-			},
-			NetworkMode: "bridge",
-		},
-		Name:          name,
-		Scale:         0,
-		StackId:       stackID,
-		StartOnCreate: true,
 	}
 }

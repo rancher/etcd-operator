@@ -383,15 +383,14 @@ func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, stat
 		token = uuid.New()
 	}
 
-	pod := k8sutil.NewEtcdPod(m, members.PeerURLPairs(), c.cluster.Metadata.Name, state, token, c.cluster.Spec, c.cluster.AsOwner())
-	if needRecovery {
-		k8sutil.AddRecoveryToPod(pod, c.cluster.Metadata.Name, token, m, c.cluster.Spec)
-	}
-	_, err := c.config.KubeCli.Core().Pods(c.cluster.Metadata.Namespace).Create(pod)
-	if err != nil {
-		return err
-	}
-	return nil
+	container := ranchutil.NewEtcdContainer(m, members.PeerURLPairs(), c.cluster.Metadata.Name, state, token, c.cluster.Spec)
+	// if needRecovery {
+	// 	k8sutil.AddRecoveryToPod(pod, c.cluster.Metadata.Name, token, m, c.cluster.Spec)
+	// }
+	ranchutil.ContainerWithSleepWaitNetwork(container)
+
+	_, err := c.config.Client.Container.Create(container)
+	return err
 }
 
 func (c *Cluster) removeContainer(name string) error {

@@ -46,9 +46,15 @@
     required: true
     default: false
     type: boolean
-  - variable: ANTIAFFINITY
+  - variable: ANTI_AFFINITY
     label: Enforce Anti-Affinity
     description: Prevent any two members of this cluster from being scheduled on a single host
     required: true
     default: true
+    type: boolean
+  - variable: SELF_HOSTED
+    label: Self-Hosted
+    description: Run etcd on host network without cattle dependencies. Anti-Affinity is implicitly enabled for self-hosted clusters.
+    required: true
+    default: false
     type: boolean
