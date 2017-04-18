@@ -22,7 +22,6 @@ func WatchClusters(host, ns string, httpClient *http.Client, resourceVersion str
 func GetClusterList(client *rancher.RancherClient, ns string) (*spec.ClusterList, error) {
 	log.Debug("GetClusterList()")
 
-
 	/*b, err := restcli.Get().RequestURI(listClustersURI(ns)).DoRaw()
 	if err != nil {
 		return nil, err
@@ -81,7 +80,7 @@ func GetClusterTPRObjectFromService(s *rancher.Service) (*spec.Cluster, error) {
 // UpdateClusterTPRObject updates the given TPR object.
 // ResourceVersion of the object MUST be set or update will fail.
 func UpdateClusterTPRObject(client *rancher.RancherClient, ns string, c *spec.Cluster) (*spec.Cluster, error) {
-	log.Debug("UpdateClusterTPRObject()")
+	// TODO emulate resource versioning somehow? This is identical to 'unconditionally' path - subject to race condition
 	return updateClusterTPRObject(client, ns, c)
 }
 

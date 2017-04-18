@@ -78,7 +78,7 @@ func (gc *GC) FullyCollect() error {
 		} else if val.(string) != "etcd" {
 			continue
 		}
-		if val, ok := c.Labels["cluster"]; ok && clusters[val.(string)] {
+		if val, ok := c.Labels["cluster"]; ok && clusters[val.(string)] && c.State != "error" {
 			continue
 		}
 		ranchutil.SetResourceContext(&c.Resource, c.AccountId)

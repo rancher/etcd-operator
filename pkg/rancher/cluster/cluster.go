@@ -321,10 +321,7 @@ func (c *Cluster) run(stopC <-chan struct{}) {
 }
 
 func isSpecEqual(s1, s2 spec.ClusterSpec) bool {
-	if s1.Size != s2.Size || s1.Paused != s2.Paused || s1.Version != s2.Version {
-		return false
-	}
-	return true
+	return reflect.DeepEqual(s1, s2)
 }
 
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {

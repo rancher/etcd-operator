@@ -76,12 +76,7 @@ func (c *Cluster) newSelfHostedSeedMember() error {
 	container := ranchutil.NewSelfHostedEtcdContainer(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "new", uuid.New(), c.cluster.Spec)
 	ranchutil.ContainerWithSleepWaitNetwork(container)
 
-	_, err := c.getClient().Container.Create(container)
-	if err != nil {
-		return err
-	}
-
-	_, err = ranchutil.CreateAndWaitContainer(c.getClient(), container, 30*time.Second)
+	_, err := ranchutil.CreateAndWaitContainer(c.getClient(), container, 30*time.Second)
 	if err != nil {
 		return err
 	}
