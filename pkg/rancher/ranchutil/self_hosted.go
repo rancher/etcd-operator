@@ -76,7 +76,6 @@ func NewSelfHostedEtcdContainer(name string, initialCluster []string, clusterNam
 	selfHostedDataDir := path.Join(etcdVolumeMountDir, ns+"-"+name)
 	c := newEtcdContainer(m, initialCluster, clusterName, state, token, selfHostedDataDir, cs)
 	c.NetworkMode = "host"
-	c.RestartPolicy.Name = "always"
 
 	ContainerWithAntiAffinity(c, clusterName)
 	if cs.Pod != nil && len(cs.Pod.NodeSelector) != 0 {

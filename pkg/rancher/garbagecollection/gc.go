@@ -57,8 +57,6 @@ func (gc *GC) CollectCluster(cluster, envId string, clusterUID types.UID) {
 		}
 		gc.logger.Infof("deleted container (%s)", c.Name)
 	}
-	//gc.collectResources(&rancher.ListOpts{}, map[types.UID]bool{clusterUID: true})
-	//gc.collectResources(k8sutil.ClusterListOpt(cluster), map[types.UID]bool{clusterUID: true})
 }
 
 // FullyCollect collects resources that were created before,
@@ -105,28 +103,3 @@ func (gc *GC) getClusters() (map[string]bool, error) {
 	}
 	return clusters, nil
 }
-
-// func (gc *GC) collectResources(option *rancher.ListOpts, runningSet map[string]bool) {
-// 	if err := gc.collectContainers(option, runningSet); err != nil {
-// 		gc.logger.Errorf("gc containers failed: %v", err)
-// 	}
-// }
-
-// func (gc *GC) collectContainers(option *rancher.ListOpts, runningSet map[string]bool) error {
-// 	coll, err := gc.client.Container.List(option)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	for _, c := range coll.Data {
-// 		if val, ok := c.Labels["app"]; !ok || val != "etcd" {
-// 			continue
-// 		}
-// 		if val, ok := c.Labels["cluster"]; ok && !runningSet[val] {
-// 			if err := gc.client.Container.Delete(c); err != nil {
-// 				return err
-// 			}
-// 			gc.logger.Infof("deleted container (%s)", c.Name)
-// 		}
-// 	}
-// 	return nil
-// }

@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
 	rancher "github.com/rancher/go-rancher/v2"
 	"k8s.io/client-go/pkg/api/v1"
@@ -30,6 +32,33 @@ func GetEtcdVersion(c *rancher.Container) string {
 
 func SetEtcdVersion(c *rancher.Container, version string) {
 	c.Labels["version"] = version
+}
+
+// CreateAndWaitPod is a workaround for self hosted and util for testing.
+// We should eventually get rid of this in critical code path and move it to test util.
+func CreateAndWaitContainer(client *rancher.RancherClient, c *rancher.Container, timeout time.Duration) (*rancher.Container, error) {
+	var err error
+	c, err = client.Container.Create(c)
+	if err != nil {
+		return nil, err
+	}
+
+	interval := 3 * time.Second
+	var retContainer *rancher.Container
+	retryutil.Retry(interval, int(timeout/(interval)), func() (bool, error) {
+		retContainer, err = client.Container.ById(c.Id)
+		if err != nil {
+			return false, err
+		}
+		switch retContainer.State {
+		case "running":
+			return true, nil
+		default:
+			return false, nil
+		}
+	})
+
+	return retContainer, nil
 }
 
 func GetContainerNames(containers []rancher.Container) []string {

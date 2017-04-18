@@ -211,6 +211,7 @@ func (c *Controller) findAllClusters() (map[string]spec.Cluster, error) {
 			s2 := s
 			s2.SelectorContainer = fmt.Sprintf("app=etcd,cluster=%s", s.Id)
 			s2.Scale = 0
+			s2.StartOnCreate = false
 			// we have to adjust the context here from global -> environment to make changes
 			ranchutil.SetResourceContext(&s.Resource, s.AccountId)
 			if _, err := c.config.Client.Env(s.AccountId).Service.Update(&s, &s2); err != nil {

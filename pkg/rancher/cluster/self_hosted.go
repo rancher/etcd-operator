@@ -80,10 +80,11 @@ func (c *Cluster) newSelfHostedSeedMember() error {
 	if err != nil {
 		return err
 	}
-	//_, err := k8sutil.CreateAndWaitPod(c.config.KubeCli, c.cluster.Metadata.Namespace, pod, 30*time.Second)
-	//if err != nil {
-	//	return err
-	//}
+
+	_, err = ranchutil.CreateAndWaitContainer(c.getClient(), container, 30*time.Second)
+	if err != nil {
+		return err
+	}
 
 	c.logger.Infof("self-hosted cluster created with seed member (%s)", newMemberName)
 	return nil

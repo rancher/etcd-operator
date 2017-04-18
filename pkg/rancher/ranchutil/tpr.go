@@ -1,13 +1,16 @@
 package ranchutil
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 
+	log "github.com/Sirupsen/logrus"
 	rancher "github.com/rancher/go-rancher/v2"
 )
 
@@ -17,6 +20,7 @@ func WatchClusters(host, ns string, httpClient *http.Client, resourceVersion str
 }
 
 func GetClusterList(client *rancher.RancherClient, ns string) (*spec.ClusterList, error) {
+	log.Debug("GetClusterList()")
 	/*b, err := restcli.Get().RequestURI(listClustersURI(ns)).DoRaw()
 	if err != nil {
 		return nil, err
@@ -31,6 +35,7 @@ func GetClusterList(client *rancher.RancherClient, ns string) (*spec.ClusterList
 }
 
 func WaitEtcdTPRReady(client *rancher.RancherClient, interval, timeout time.Duration, ns string) error {
+	log.Debug("WaitEtcdTPRReady()")
 	/*return retryutil.Retry(interval, int(timeout/interval), func() (bool, error) {
 		_, err := restcli.Get().RequestURI(listClustersURI(ns)).DoRaw()
 		if err != nil {
@@ -45,41 +50,54 @@ func WaitEtcdTPRReady(client *rancher.RancherClient, interval, timeout time.Dura
 }
 
 func listClustersURI(ns string) string {
+	log.Debug("listClustersURI()")
 	//return fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters", spec.TPRGroup, spec.TPRVersion, ns)
 	return ""
 }
 
 func GetClusterTPRObject(client *rancher.RancherClient, ns, name string) (*spec.Cluster, error) {
-	/*uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters/%s", spec.TPRGroup, spec.TPRVersion, ns, name)
-	b, err := restcli.Get().RequestURI(uri).DoRaw()
+	log.Debug("GetClusterTPRObject()")
+	s, err := client.Service.ById(name)
 	if err != nil {
 		return nil, err
 	}
-	return readOutCluster(b)*/
-	return nil, nil
+	encodedTPR, ok := s.Metadata["io.rancher.operator.tpr"]
+	if !ok {
+		return nil, errors.New("TPR not found")
+	}
+	data, err2 := base64.StdEncoding.DecodeString(encodedTPR.(string))
+	if err2 != nil {
+		return nil, err2
+	}
+	return readOutCluster(data)
 }
 
 // UpdateClusterTPRObject updates the given TPR object.
 // ResourceVersion of the object MUST be set or update will fail.
 func UpdateClusterTPRObject(client *rancher.RancherClient, ns string, c *spec.Cluster) (*spec.Cluster, error) {
+	log.Debug("UpdateClusterTPRObject()")
 	return updateClusterTPRObject(client, ns, c)
 }
 
 // UpdateClusterTPRObjectUnconditionally updates the given TPR object.
 // This should only be used in tests.
 func UpdateClusterTPRObjectUnconditionally(client *rancher.RancherClient, ns string, c *spec.Cluster) (*spec.Cluster, error) {
+	log.Debug("UpdateClusterTPRObjectUnconditionally()")
 	return updateClusterTPRObject(client, ns, c)
 }
 
 func updateClusterTPRObject(client *rancher.RancherClient, ns string, c *spec.Cluster) (*spec.Cluster, error) {
-	// get the service by c.Metadata.Name (uuid)
 	s, err := client.Service.ById(c.Metadata.Name)
 	if err != nil {
 		return nil, err
 	}
-	// TODO serialize cluster object nad put in service label io.rancher.operator.tpr
-	s.LaunchConfig.Labels["io.rancher.operator.tpr"] = "thisisatest!!!!"
-	s, err = client.Service.Update(s, nil)
+	data, err2 := json.Marshal(c)
+	if err2 != nil {
+		return nil, err2
+	}
+
+	s.Metadata["io.rancher.operator.tpr"] = base64.StdEncoding.EncodeToString(data)
+	s, err = client.Service.Update(s, *s)
 	if err != nil {
 		return nil, err
 	}
