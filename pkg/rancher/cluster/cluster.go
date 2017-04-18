@@ -45,7 +45,7 @@ type Config struct {
 	s3config.S3Context
 
 	KubeCli kubernetes.Interface
-	Client  *rancher.RancherClient
+	Client  *ranchutil.ContextAwareClient
 }
 
 type Cluster struct {
@@ -72,6 +72,10 @@ type Cluster struct {
 	backupDir string
 
 	gc *garbagecollection.GC
+}
+
+func (c *Cluster) getClient() *rancher.RancherClient {
+	return c.config.Client.Env(c.cluster.Metadata.Namespace)
 }
 
 func (c Cluster) Get() *spec.Cluster {
@@ -150,7 +154,7 @@ func (c *Cluster) create() error {
 	}
 	c.logger.Infof("creating cluster with Spec (%#v), Status (%#v)", c.cluster.Spec, c.cluster.Status)
 
-	c.gc.CollectCluster(c.cluster.Metadata.Name, c.cluster.Metadata.UID)
+	c.gc.CollectCluster(c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, c.cluster.Metadata.UID)
 
 	if c.bm != nil {
 		if err := c.bm.setup(); err != nil {
@@ -351,7 +355,7 @@ func (c *Cluster) recover() error {
 }
 
 func (c *Cluster) delete() {
-	c.gc.CollectCluster(c.cluster.Metadata.Name, garbagecollection.NullUID)
+	c.gc.CollectCluster(c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, garbagecollection.NullUID)
 
 	if c.bm == nil {
 		return
@@ -390,19 +394,19 @@ func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, stat
 	// }
 	ranchutil.ContainerWithSleepWaitNetwork(container)
 
-	_, err := c.config.Client.Container.Create(container)
+	_, err := c.getClient().Container.Create(container)
 	return err
 }
 
 func (c *Cluster) removeContainer(name string) error {
 	// Listing by name doesn't work, pull all containers and filter
-	coll, err := c.config.Client.Container.List(&rancher.ListOpts{})
+	coll, err := c.getClient().Container.List(&rancher.ListOpts{})
 	if err != nil {
 		return err
 	}
 	for _, n := range coll.Data {
 		if n.Name == name {
-			return c.config.Client.Container.Delete(&n)
+			return c.getClient().Container.Delete(&n)
 		}
 	}
 	return fmt.Errorf("container not found: %s", name)
@@ -418,13 +422,13 @@ func containerHasLabel(c rancher.Container, name, value string) bool {
 }
 
 func (c *Cluster) pollContainers() (running, pending []rancher.Container, err error) {
-	containerColl, err := c.config.Client.Container.List(&rancher.ListOpts{})
+	containerColl, err := c.getClient().Container.List(&rancher.ListOpts{})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list running containers: %v", err)
 	}
 
 	// get the hosts into a map so we can set primaryIpAddress for networkMode=host containers
-	hostColl, err2 := c.config.Client.Host.List(&rancher.ListOpts{})
+	hostColl, err2 := c.getClient().Host.List(&rancher.ListOpts{})
 	if err2 != nil {
 		return nil, nil, fmt.Errorf("failed to list hosts: %v", err2)
 	}
@@ -511,7 +515,7 @@ func (c *Cluster) updateTPRStatus() error {
 
 	newCluster := c.cluster
 	newCluster.Status = c.status
-	newCluster, err := ranchutil.UpdateClusterTPRObject(c.config.Client, c.cluster.Metadata.Namespace, newCluster)
+	newCluster, err := ranchutil.UpdateClusterTPRObject(c.getClient(), c.cluster.Metadata.Namespace, newCluster)
 	if err != nil {
 		return err
 	}

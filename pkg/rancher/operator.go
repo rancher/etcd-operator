@@ -21,7 +21,7 @@ func NewOperator(c *cli.Context) *spec.Operator {
 
 	return &spec.Operator{
 		Controller: controller.New(cfg),
-		GC:         garbagecollection.New(client.Global()),
+		GC:         garbagecollection.New(client),
 		GCPeriod:   c.Duration("gc-interval"),
 		OptIn:      c.Bool("analytics"),
 	}

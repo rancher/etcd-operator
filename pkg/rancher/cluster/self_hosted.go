@@ -40,7 +40,7 @@ func (c *Cluster) addOneSelfHostedMember() error {
 	ranchutil.ContainerWithAddMemberCommand(container, c.members.ClientURLs(), newMemberName, []string{peerURL}, c.cluster.Spec)
 	ranchutil.ContainerWithSleepWaitNetwork(container)
 
-	_, err := c.config.Client.Container.Create(container)
+	_, err := c.getClient().Container.Create(container)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (c *Cluster) newSelfHostedSeedMember() error {
 	container := ranchutil.NewSelfHostedEtcdContainer(newMemberName, initialCluster, c.cluster.Metadata.Name, c.cluster.Metadata.Namespace, "new", uuid.New(), c.cluster.Spec)
 	ranchutil.ContainerWithSleepWaitNetwork(container)
 
-	_, err := c.config.Client.Container.Create(container)
+	_, err := c.getClient().Container.Create(container)
 	if err != nil {
 		return err
 	}

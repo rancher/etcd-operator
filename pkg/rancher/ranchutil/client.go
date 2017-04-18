@@ -157,7 +157,15 @@ func SetResourceContext(r *rancher.Resource, envId string) {
 }
 
 func (c *ContextAwareClient) ListEtcdServices(envId string) ([]rancher.Service, error) {
-	allServices, err := c.Env(envId).Service.List(&rancher.ListOpts{})
+	return GetEtcdServices(c.Env(envId))
+}
+
+func GetEtcdServices(c *rancher.RancherClient) ([]rancher.Service, error) {
+	allServices, err := c.Service.List(&rancher.ListOpts{
+		Filters: map[string]interface{}{
+			"limit": "10000",
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +173,7 @@ func (c *ContextAwareClient) ListEtcdServices(envId string) ([]rancher.Service, 
 	services := []rancher.Service{}
 	for _, s := range allServices.Data {
 		if s.LaunchConfig != nil && s.LaunchConfig.Labels != nil {
-			if _, ok := s.LaunchConfig.Labels["io.rancher.operator"]; ok {
+			if val, ok := s.LaunchConfig.Labels["io.rancher.operator"]; ok && val == "etcd" {
 				services = append(services, s)
 			}
 		}

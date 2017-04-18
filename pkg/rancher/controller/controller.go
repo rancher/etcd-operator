@@ -165,7 +165,7 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 	switch event.Type {
 	case kwatch.Added:
 		stopC := make(chan struct{})
-		nc := cluster.New(c.makeClusterConfig(clus.Metadata.Namespace), &clus, stopC, &c.waitCluster)
+		nc := cluster.New(c.makeClusterConfig(), &clus, stopC, &c.waitCluster)
 
 		c.stopChMap[clus.Metadata.Name] = stopC
 		c.clusters[clus.Metadata.Name] = nc
@@ -226,12 +226,12 @@ func (c *Controller) findAllClusters() (map[string]spec.Cluster, error) {
 	return clusters, nil
 }
 
-func (c *Controller) makeClusterConfig(envId string) cluster.Config {
+func (c *Controller) makeClusterConfig() cluster.Config {
 	return cluster.Config{
 		PVProvisioner: c.config.PVProvisioner,
 		S3Context:     c.config.S3Context,
 
-		Client: c.config.Client.Env(envId),
+		Client: c.config.Client,
 	}
 }
 
