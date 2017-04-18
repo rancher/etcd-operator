@@ -66,7 +66,7 @@ func (c *Config) Validate() error {
 }
 
 type Controller struct {
-	log    *log.Entry
+	logger *log.Entry
 	config Config
 
 	clusters  map[string]*cluster.Cluster
@@ -77,7 +77,7 @@ type Controller struct {
 
 func New(c Config) Controller {
 	return Controller{
-		log:       log.WithField("pkg", "controller"),
+		logger:    log.WithField("pkg", "controller"),
 		config:    c,
 		clusters:  make(map[string]*cluster.Cluster),
 		stopChMap: map[string]chan struct{}{},
@@ -92,6 +92,17 @@ func (c Controller) Run() error {
 		c.waitCluster.Wait()
 	}()
 
+	for {
+		err := c.initResource()
+		if err == nil {
+			break
+		}
+		c.logger.Errorf("initialization failed: %v", err)
+		c.logger.Infof("retry in %v...", initRetryWaitTime)
+		time.Sleep(initRetryWaitTime)
+		// todo: add max retry?
+	}
+
 	eventCh, errCh := c.watch()
 
 	go func() {
@@ -100,13 +111,28 @@ func (c Controller) Run() error {
 		for event := range eventCh {
 			pt.start()
 			if err := c.handleClusterEvent(event); err != nil {
-				c.log.Warningf("fail to handle event: %v", err)
+				c.logger.Warningf("fail to handle event: %v", err)
 			}
 			pt.stop()
 		}
 	}()
 
 	return <-errCh
+}
+
+func (c *Controller) initResource() error {
+	c.logger.Info("finding existing clusters...")
+	clusters, err := c.findAllClusters()
+	if err != nil {
+		return err
+	}
+	for _, clus := range clusters {
+		stopC := make(chan struct{})
+		nc := cluster.New(c.makeClusterConfig(), &clus, stopC, &c.waitCluster)
+		c.stopChMap[clus.Metadata.Name] = stopC
+		c.clusters[clus.Metadata.Name] = nc
+	}
+	return nil
 }
 
 func (c *Controller) watch() (<-chan *Event, <-chan error) {
@@ -149,7 +175,7 @@ func (c *Controller) detect(eventCh chan<- *Event, errCh chan<- error) {
 }
 
 func (c *Controller) handleClusterEvent(event *Event) error {
-	c.log.Debugf("Received event: %+v", event)
+	c.logger.Debugf("Received event: %+v", event)
 	clus := event.Object
 
 	if clus.Status.IsFailed() {
@@ -220,10 +246,10 @@ func (c *Controller) findAllClusters() (map[string]spec.Cluster, error) {
 		}
 
 		cluster := ranchutil.ClusterFromService(s)
-		//c.log.Debugf("cluster: %+v", cluster)
+		//c.logger.Debugf("cluster: %+v", cluster)
 		clusters[cluster.Metadata.Name] = cluster
 	}
-	//c.log.Debugf("clusters: %+v", clusters)
+	//c.logger.Debugf("clusters: %+v", clusters)
 	return clusters, nil
 }
 

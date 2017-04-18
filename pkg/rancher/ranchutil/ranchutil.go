@@ -146,24 +146,28 @@ func getPodPolicy(s rancher.Service) *spec.PodPolicy {
 }
 
 func ClusterFromService(s rancher.Service) spec.Cluster {
-	return spec.Cluster{
-		Metadata: v1.ObjectMeta{
-			Name:      s.Id,
-			Namespace: s.AccountId,
-		},
-		Spec: spec.ClusterSpec{
-			Size:    labelInt(s, opLabel("size"), 1),
-			Version: labelString(s, opLabel("version"), "3.1.4"),
-			Paused:  labelBool(s, opLabel("paused"), false),
-			Pod:     getPodPolicy(s),
-			//Backup: &spec.BackupPolicy{},
-			// must be nil if not set, don't create empty object
-			//Restore:    &spec.RestorePolicy{},
-			// must be nil if not set
-			SelfHosted: getSelfHostedPolicy(s),
-			//TLS: &spec.TLSPolicy{},
-		},
+	cluster, err := GetClusterTPRObjectFromService(&s)
+	if err != nil {
+		cluster = &spec.Cluster{
+			Metadata: v1.ObjectMeta{
+				Name:      s.Id,
+				Namespace: s.AccountId,
+			},
+			Spec: spec.ClusterSpec{
+				Size:    labelInt(s, opLabel("size"), 1),
+				Version: labelString(s, opLabel("version"), "3.1.4"),
+				Paused:  labelBool(s, opLabel("paused"), false),
+				Pod:     getPodPolicy(s),
+				//Backup: &spec.BackupPolicy{},
+				// must be nil if not set, don't create empty object
+				//Restore:    &spec.RestorePolicy{},
+				// must be nil if not set
+				SelfHosted: getSelfHostedPolicy(s),
+				//TLS: &spec.TLSPolicy{},
+			},
+		}
 	}
+	return *cluster
 }
 
 func NewStack(name string, desc string) *rancher.Stack {

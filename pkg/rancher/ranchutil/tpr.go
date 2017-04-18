@@ -21,6 +21,8 @@ func WatchClusters(host, ns string, httpClient *http.Client, resourceVersion str
 
 func GetClusterList(client *rancher.RancherClient, ns string) (*spec.ClusterList, error) {
 	log.Debug("GetClusterList()")
+
+
 	/*b, err := restcli.Get().RequestURI(listClustersURI(ns)).DoRaw()
 	if err != nil {
 		return nil, err
@@ -61,6 +63,10 @@ func GetClusterTPRObject(client *rancher.RancherClient, ns, name string) (*spec.
 	if err != nil {
 		return nil, err
 	}
+	return GetClusterTPRObjectFromService(s)
+}
+
+func GetClusterTPRObjectFromService(s *rancher.Service) (*spec.Cluster, error) {
 	encodedTPR, ok := s.Metadata["io.rancher.operator.tpr"]
 	if !ok {
 		return nil, errors.New("TPR not found")
