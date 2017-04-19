@@ -1,12 +1,17 @@
 etcd-operator
 =============
 
-# Environment Mode
+## Environment Mode
 
-If no Rancher credentials are provided, operator will manage etcd clusters for the environment it belongs to.
+Operator will manage etcd clusters for a specific environment.
 
-# Experimental: Global Mode
+Provide an `Environment` API Access Key, Secret Key and URL.
 
-Experimental, use at your own risk. Manage etcd clusters for an entire Rancher installation.
+## Global Mode
 
-Note: The operator will needs direct network access to all etcd containers; currently only `host` network mode sort of works.
+**Experimental, use at your own risk.** Manage etcd clusters across all environments.
+
+Provide an `Account` API Access Key, Secret Key and URL.
+
+### Limitations
+The operator container will need direct network access to all etcd containers. This may be difficult to achieve across environments.
