@@ -43,13 +43,11 @@
   - variable: PAUSED
     label: Paused
     description: Pause operator reconciliation (this may be toggled via service upgrade)
-    required: true
     default: false
     type: boolean
   - variable: ANTI_AFFINITY
     label: Enforce Anti-Affinity
     description: Prevent any two members of this cluster from being scheduled on a single host
-    required: true
     default: true
     type: boolean
   - variable: NODE_SELECTOR
@@ -60,12 +58,48 @@
   - variable: SELF_HOSTED
     label: Self-Hosted
     description: Run etcd without cattle infrastructure services
-    required: true
     default: false
     type: boolean
   - variable: NETWORK
     label: Network Mode
-    description: The Docker Network to connect containers to
+    description: The Docker Network to connect containers to (host, ipsec, bridge, etc.)
     required: true
     default: ipsec
     type: string
+  - variable: ENABLE_BACKUPS
+    label: Enable Backups
+    description: Periodically create backups. Enables automatic disaster recovery except for self-hosted clusters.
+    default: true
+    type: boolean
+  - variable: STORAGE_TYPE
+    label: Storage Type
+    description: Type of storage device to store backup files.
+    required: true
+    default: PersistentVolume
+    type: enum
+    options:
+    - PersistentVolume
+    - S3
+  - variable: STORAGE_SIZE
+    label: Persistent Volume Size
+    description: The size in megabytes (MB) of the persistent volume to claim for backups
+    required: false
+    default: 1024
+    type: int
+  - variable: BACKUP_INTERVAL
+    label: Backup Interval
+    description: The interval between two backups.
+    required: true
+    default: 45m0s
+    type: string
+  - variable: BACKUP_COUNT
+    label: Backup Count
+    description: Maximum number of backups to retain. Setting to 0 disables backups and will be unable to recover from majority loss.
+    required: true
+    default: 32
+    type: int
+  - variable: CLEANUP_BACKUPS_ON_DELETE
+    label: Cleanup Backups
+    description: Delete backups when the cluster is deleted.
+    default: false
+    type: boolean
