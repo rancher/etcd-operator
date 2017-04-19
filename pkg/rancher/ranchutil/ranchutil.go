@@ -160,6 +160,7 @@ func ClusterFromService(s rancher.Service) spec.Cluster {
 		Size:    labelInt(s, opLabel("size"), 1),
 		Version: labelString(s, opLabel("version"), "3.1.4"),
 		Paused:  labelBool(s, opLabel("paused"), false),
+		Network: labelString(s, opLabel("network"), "host"),
 		Pod:     getPodPolicy(s),
 		//Backup: &spec.BackupPolicy{},
 		// must be nil if not set, don't create empty object

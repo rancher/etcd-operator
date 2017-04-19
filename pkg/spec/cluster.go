@@ -93,6 +93,9 @@ type ClusterSpec struct {
 	// Paused is to pause the control of the operator for the etcd cluster.
 	Paused bool `json:"paused,omitempty"`
 
+	// Network is the name of the Docker network to connect containers to.
+	Network string `json:"network"`
+
 	// Pod defines the policy to create pod for the etcd container.
 	Pod *PodPolicy `json:"pod,omitempty"`
 

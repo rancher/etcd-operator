@@ -44,6 +44,7 @@ func newEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, 
 	//c.DataVolumes = append(c.DataVolumes, fmt.Sprintf("%s:%s", varLockVolumeName, varLockDir))
 	c.Command = []string{"sh", "-ec", fmt.Sprintf("flock %s -c '%s'", etcdLockPath, commands)}
 	c.Name = m.Name
+	c.NetworkMode = cs.Network
 	c.Labels["app"] = "etcd"
 	c.Labels["name"] = m.Name
 	c.Labels["cluster"] = clusterName
@@ -54,7 +55,6 @@ func newEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, 
 
 func NewEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec) *rancher.Container {
 	c := newEtcdContainer(m, initialCluster, clusterName, state, token, dataDir, cs)
-	c.NetworkMode = "ipsec"
 	if cs.Pod != nil {
 		if cs.Pod.AntiAffinity {
 			ContainerWithAntiAffinity(c, clusterName)
@@ -75,7 +75,6 @@ func NewSelfHostedEtcdContainer(name string, initialCluster []string, clusterNam
 	}
 	selfHostedDataDir := path.Join(etcdVolumeMountDir, ns+"-"+name)
 	c := newEtcdContainer(m, initialCluster, clusterName, state, token, selfHostedDataDir, cs)
-	c.NetworkMode = "host"
 
 	ContainerWithAntiAffinity(c, clusterName)
 	if cs.Pod != nil && len(cs.Pod.NodeSelector) != 0 {

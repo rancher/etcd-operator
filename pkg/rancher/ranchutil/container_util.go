@@ -17,7 +17,7 @@ func etcdContainer(commands, version string) rancher.Container {
 		ImageUuid:     EtcdImageName(version),
 		Labels:        make(map[string]interface{}),
 		Ports:         []string{"2379", "2380"},
-		RestartPolicy: &rancher.RestartPolicy{Name: "always"},
+		RestartPolicy: &rancher.RestartPolicy{Name: "never"},
 	}
 }
 

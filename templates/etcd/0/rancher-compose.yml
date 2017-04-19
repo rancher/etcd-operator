@@ -63,3 +63,9 @@
     required: true
     default: false
     type: boolean
+  - variable: NETWORK
+    label: Network Mode
+    description: The Docker Network to connect containers to
+    required: true
+    default: ipsec
+    type: string
