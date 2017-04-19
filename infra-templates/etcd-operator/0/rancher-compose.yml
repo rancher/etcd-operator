@@ -5,17 +5,17 @@
   - variable: CATTLE_URL
     label: Rancher URL
     description: Rancher account or environment API Endpoint URL 
-    required: true
+    required: false
     type: string
   - variable: CATTLE_ACCESS_KEY
     label: Rancher Access Key
     description: Rancher account or environment access key
-    required: true
+    required: false
     type: string
   - variable: CATTLE_SECRET_KEY
     label: Rancher Secret Key
     description: Rancher account or environment access key
-    required: true
+    required: false
     type: password
   - variable: ANALYTICS
     label: Google Analytics
