@@ -18,7 +18,7 @@ services:
     {{- end }}
     labels:
     {{- if eq .Values.CATTLE_URL "" }}
-      io.rancher.container.agent.role: environmentAdmin
+      io.rancher.container.agent.role: system
       io.rancher.container.create_agent: "true"
     {{- end }}
       io.rancher.container.dns: 'true'

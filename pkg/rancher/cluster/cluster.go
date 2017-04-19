@@ -448,6 +448,7 @@ func (c *Cluster) pollContainers() (running, pending []rancher.Container, err er
 		switch n.State {
 		case "running":
 			running = append(running, n)
+		case "error":
 		default:
 			pending = append(pending, n)
 		}

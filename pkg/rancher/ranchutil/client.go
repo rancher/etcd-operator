@@ -35,14 +35,24 @@ type ContextAwareClient struct {
 }
 
 func NewContextAwareClient() *ContextAwareClient {
-	// append /schemas to path so resp X-API-Schemas header returns correct endpoint
-	cattleUrl := os.Getenv("CATTLE_URL")
-	if !strings.HasSuffix(cattleUrl, "/schemas") {
-		cattleUrl = cattleUrl + "/schemas"
+	u, err := url.Parse(os.Getenv("CATTLE_URL"))
+	if err != nil {
+		log.Fatal(err)
 	}
+	pathVars := strings.Split(u.Path, "/")
+	// force v2-beta API
+	if len(pathVars) >= 2 {
+		pathVars[1] = "v2-beta"
+	}
+	// append /schemas to path so resp X-API-Schemas header returns correct endpoint
+	if pathVars[len(pathVars)-1] != "schemas" {
+		pathVars = append(pathVars, "schemas")
+	}
+	u.Path = strings.Join(pathVars, "/")
 
+	log.Info("Rancher Client: %s", u.String())
 	c, err := rancher.NewRancherClient(&rancher.ClientOpts{
-		Url:       cattleUrl,
+		Url:       u.String(),
 		AccessKey: os.Getenv("CATTLE_ACCESS_KEY"),
 		SecretKey: os.Getenv("CATTLE_SECRET_KEY"),
 		Timeout:   rancherTimeout,
