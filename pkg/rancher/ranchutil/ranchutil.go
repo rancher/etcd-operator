@@ -131,18 +131,43 @@ func labelInt(s rancher.Service, label string, def int) int {
 	return def
 }
 
-func getSelfHostedPolicy(s rancher.Service) *spec.SelfHostedPolicy {
-	if labelBool(s, opLabel("selfhosted"), false) {
-		return &spec.SelfHostedPolicy{}
-	}
-	return nil
-}
-
 func getPodPolicy(s rancher.Service) *spec.PodPolicy {
 	return &spec.PodPolicy{
 		AntiAffinity: labelBool(s, opLabel("antiaffinity"), false),
 		NodeSelector: labelStringMap(s, opLabel("nodeselector"), map[string]string{}),
 	}
+}
+
+func getBackupPolicy(s rancher.Service) *spec.BackupPolicy {
+	if !labelBool(s, opLabel("backup"), false) {
+		return nil
+	}
+
+	bp := &spec.BackupPolicy{
+		BackupIntervalInSecond:        labelInt(s, opLabel("backup.interval"), 1800),
+		MaxBackups:                    labelInt(s, opLabel("backup.count"), 48),
+		CleanupBackupsOnClusterDelete: labelBool(s, opLabel("backup.delete"), false),
+	}
+	switch labelString(s, opLabel("backup.storage.type"), "") {
+	case spec.BackupStorageTypePersistentVolume:
+		bp.StorageType = spec.BackupStorageTypePersistentVolume
+		bp.PV = &spec.PVSource{
+			VolumeSizeInMB: labelInt(s, opLabel("backup.storage.size"), 1024),
+		}
+	case spec.BackupStorageTypeS3:
+		bp.StorageType = spec.BackupStorageTypeS3
+		bp.S3 = &spec.S3Source{}
+	default:
+		bp.StorageType = spec.BackupStorageTypeDefault
+	}
+	return bp
+}
+
+func getSelfHostedPolicy(s rancher.Service) *spec.SelfHostedPolicy {
+	if !labelBool(s, opLabel("selfhosted"), false) {
+		return nil
+	}
+	return &spec.SelfHostedPolicy{}
 }
 
 func ClusterFromService(s rancher.Service) spec.Cluster {
@@ -162,10 +187,9 @@ func ClusterFromService(s rancher.Service) spec.Cluster {
 		Paused:  labelBool(s, opLabel("paused"), false),
 		Network: labelString(s, opLabel("network"), "host"),
 		Pod:     getPodPolicy(s),
-		//Backup: &spec.BackupPolicy{},
+		Backup:  getBackupPolicy(s),
 		// must be nil if not set, don't create empty object
 		//Restore:    &spec.RestorePolicy{},
-		// must be nil if not set
 		SelfHosted: getSelfHostedPolicy(s),
 		//TLS: &spec.TLSPolicy{},
 	}

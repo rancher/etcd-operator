@@ -85,6 +85,20 @@ func main() {
 			Value: -1,
 		},
 	}
+	backupFlags := []cli.Flag{
+		cli.StringFlag{
+			Name:  "cluster-name",
+			Usage: "The etcd cluster name",
+		},
+		cli.StringFlag{
+			Name:  "listen",
+			Value: "0.0.0.0:19999",
+		},
+		cli.StringFlag{
+			Name:   "backup-policy",
+			EnvVar: "BACKUP_POLICY",
+		},
+	}
 
 	app := &cli.App{
 		Name:    "etcd-operator",
@@ -120,22 +134,14 @@ func main() {
 					{
 						Name:        "backup",
 						ShortName:   "b",
-						Description: "execute the backup policy for a cluster",
-						Flags: []cli.Flag{
-							cli.StringFlag{
-								Name:  "cluster-name",
-								Usage: "The etcd cluster name",
-							},
-							cli.StringFlag{
-								Name:  "listen",
-								Value: "0.0.0.0:19999",
-							},
+						Description: "execute the backup manager for a cluster",
+						Flags: append(backupFlags, []cli.Flag{
 							cli.StringFlag{
 								Name:   "namespace",
 								EnvVar: "MY_POD_NAMESPACE",
 								Value:  "default",
 							},
-						},
+						}...),
 						Action: kubernetesBackup,
 					},
 					{
@@ -167,6 +173,13 @@ func main() {
 				Usage:     "operator for Rancher",
 				Subcommands: []cli.Command{
 					{
+						Name:        "backup",
+						ShortName:   "b",
+						Description: "execute the backup manager for a cluster",
+						Flags:       backupFlags,
+						Action:      rancherBackup,
+					},
+					{
 						Name:        "operator",
 						ShortName:   "o",
 						Description: "run the etcd operator for rancher",
@@ -195,6 +208,21 @@ func kubernetesBackup(c *cli.Context) error {
 	backup.New(kclient, c.String("cluster-name"), c.String("namespace"), *p, c.String("listen")).Run()
 
 	panic("unreachable")
+	return nil
+}
+
+func rancherBackup(c *cli.Context) error {
+	if len(c.String("cluster-name")) == 0 {
+		panic("cluster-name not set")
+	}
+
+	p := &spec.BackupPolicy{}
+	ps := os.Getenv(env.BackupPolicy)
+	if err := json.Unmarshal([]byte(ps), p); err != nil {
+		log.Fatalf("fail to parse backup policy (%s): %v", ps, err)
+	}
+
+	log.Infof("UNIMPLEMENTED")
 	return nil
 }
 

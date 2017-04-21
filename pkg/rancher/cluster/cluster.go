@@ -133,12 +133,12 @@ func (c *Cluster) setup() error {
 		return fmt.Errorf("unexpected cluster phase: %s", c.status.Phase)
 	}
 
-	//if b := c.cluster.Spec.Backup; b != nil && b.MaxBackups > 0 {
-	//  c.bm, err = newBackupManager(c.config, c.cluster, c.log)
-	//  if err != nil {
-	//    return err
-	//  }
-	//}
+	if b := c.cluster.Spec.Backup; b != nil && b.MaxBackups > 0 {
+		c.bm, err = newBackupManager(c.config, c.cluster, c.logger)
+		if err != nil {
+			return err
+		}
+	}
 
 	if shouldCreateCluster {
 		return c.create()
@@ -448,6 +448,7 @@ func (c *Cluster) pollContainers() (running, pending []rancher.Container, err er
 		switch n.State {
 		case "running":
 			running = append(running, n)
+		case "stopped":
 		case "error":
 		default:
 			pending = append(pending, n)
