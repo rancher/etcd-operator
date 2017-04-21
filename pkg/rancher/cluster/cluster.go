@@ -326,7 +326,7 @@ func isSpecEqual(s1, s2 spec.ClusterSpec) bool {
 
 func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 	m := &etcdutil.Member{
-		Name:      etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter),
+		Name:      c.CreateMemberName(),
 		Namespace: c.cluster.Metadata.Namespace,
 		Provider:  "rancher",
 	}

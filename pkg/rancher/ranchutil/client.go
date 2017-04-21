@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	rancherTimeout = 5 * time.Second
+	ClientTimeout = 5 * time.Second
 )
 
 // ContextAwareClient is a wrapper for the rancher client which effortlessly
@@ -50,12 +50,11 @@ func NewContextAwareClient() *ContextAwareClient {
 	}
 	u.Path = strings.Join(pathVars, "/")
 
-	log.Info("Rancher Client: %s", u.String())
 	c, err := rancher.NewRancherClient(&rancher.ClientOpts{
 		Url:       u.String(),
 		AccessKey: os.Getenv("CATTLE_ACCESS_KEY"),
 		SecretKey: os.Getenv("CATTLE_SECRET_KEY"),
-		Timeout:   rancherTimeout,
+		Timeout:   ClientTimeout,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -77,17 +76,18 @@ func (c *ContextAwareClient) createClient(id string) *rancher.RancherClient {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if id != "global" {
-		u.Path = strings.Join([]string{strings.Split(u.Path, "/")[1], "projects", id, "schemas"}, "/")
-	} else {
+	switch id {
+	case "global":
 		u.Path = strings.Join([]string{strings.Split(u.Path, "/")[1], "schemas"}, "/")
+	default:
+		u.Path = strings.Join([]string{strings.Split(u.Path, "/")[1], "projects", id, "schemas"}, "/")
 	}
 
 	cl, err2 := rancher.NewRancherClient(&rancher.ClientOpts{
 		Url:       u.String(),
 		AccessKey: os.Getenv("CATTLE_ACCESS_KEY"),
 		SecretKey: os.Getenv("CATTLE_SECRET_KEY"),
-		Timeout:   rancherTimeout,
+		Timeout:   ClientTimeout,
 	})
 	if err2 != nil {
 		log.Fatal(err2)

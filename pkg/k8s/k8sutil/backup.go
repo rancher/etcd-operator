@@ -113,8 +113,6 @@ func CreateAndWaitPVC(kubecli kubernetes.Interface, clusterName, ns, pvProvision
 	return nil
 }
 
-var BackupImage = "quay.io/coreos/etcd-operator:latest"
-
 func PodSpecWithPV(ps *v1.PodSpec, clusterName string) *v1.PodSpec {
 	ps.Containers[0].VolumeMounts = []v1.VolumeMount{{
 		Name:      backupPVVolName,
@@ -182,12 +180,13 @@ func NewBackupPodSpec(clusterName, account string, sp spec.ClusterSpec) (*v1.Pod
 		NodeSelector:       nsel,
 		Containers: []v1.Container{
 			{
-				Name:  "backup",
-				Image: BackupImage,
-				Command: []string{
-					"/bin/sh",
-					"-ec",
-					"/usr/local/bin/etcd-backup --etcd-cluster=" + clusterName,
+				Name:            "backup",
+				Image:           constants.BackupImage,
+				ImagePullPolicy: "Always",
+				Args: []string{
+					"kubernetes",
+					"backup",
+					"--cluster-name=" + clusterName,
 				},
 				Env: []v1.EnvVar{{
 					Name:      "MY_POD_NAMESPACE",

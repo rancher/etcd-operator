@@ -30,7 +30,7 @@ import (
 func (c *Cluster) addOneSelfHostedMember() error {
 	c.status.AppendScalingUpCondition(c.members.Size(), c.cluster.Spec.Size)
 
-	newMemberName := etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter)
+	newMemberName := c.CreateMemberName()
 	c.memberCounter++
 
 	peerURL := "http://$(wget -q -O - icanhazip.com):2380"
@@ -69,7 +69,7 @@ func (c *Cluster) addOneSelfHostedMember() error {
 }
 
 func (c *Cluster) newSelfHostedSeedMember() error {
-	newMemberName := fmt.Sprintf("%s-%04d", c.cluster.Metadata.Name, c.memberCounter)
+	newMemberName := c.CreateMemberName()
 	c.memberCounter++
 	initialCluster := []string{newMemberName + "=http://$(wget -q -O - icanhazip.com):2380"}
 

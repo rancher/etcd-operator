@@ -125,8 +125,7 @@ func (c *Cluster) addOneMember() error {
 	}
 	defer etcdcli.Close()
 
-	newMemberName := etcdutil.CreateMemberName(c.cluster.Metadata.Name, c.memberCounter)
-	newMember := &etcdutil.Member{Name: newMemberName, Namespace: c.cluster.Metadata.Namespace, Provider: "rancher"}
+	newMember := &etcdutil.Member{Name: c.CreateMemberName(), Namespace: c.cluster.Metadata.Namespace, Provider: "rancher"}
 	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
 	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerAddr()})
 	if err != nil {

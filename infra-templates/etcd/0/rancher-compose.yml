@@ -69,7 +69,7 @@
   - variable: ENABLE_BACKUPS
     label: Enable Backups
     description: Periodically create backups. Enables automatic disaster recovery except for self-hosted clusters.
-    default: false
+    default: true
     type: boolean
   - variable: STORAGE_TYPE
     label: Storage Type

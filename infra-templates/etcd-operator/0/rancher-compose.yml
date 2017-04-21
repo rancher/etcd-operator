@@ -21,7 +21,7 @@
     label: Google Analytics
     description: Send analytical events to Google
     required: true
-    default: false
+    default: true
     type: boolean
   - variable: GC_INTERVAL
     label: GC Period

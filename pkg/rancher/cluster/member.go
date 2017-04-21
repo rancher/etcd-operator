@@ -9,6 +9,13 @@ import (
 	rancher "github.com/rancher/go-rancher/v2"
 )
 
+func (c *Cluster) CreateMemberName() string {
+	return fmt.Sprintf("%s-%s-%04d",
+		c.cluster.Metadata.Labels["stackName"],
+		c.cluster.Metadata.Labels["serviceName"],
+		c.memberCounter)
+}
+
 func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	resp, err := etcdutil.ListMembers(known.ClientURLs())
 	if err != nil {

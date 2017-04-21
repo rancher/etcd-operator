@@ -24,12 +24,15 @@ import (
 
 	"github.com/coreos/etcd-operator/client/experimentalclient"
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
-	"github.com/coreos/etcd-operator/pkg/k8s/cluster/backupstorage"
+	"github.com/coreos/etcd-operator/pkg/backup/env"
 	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/rancher/cluster/backupstorage"
+	"github.com/coreos/etcd-operator/pkg/rancher/ranchutil"
 	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/util/constants"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/coreos/etcd-operator/pkg/util/constants"
+	rancher "github.com/rancher/go-rancher/v2"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -54,11 +57,12 @@ type backupManager struct {
 }
 
 func newBackupManager(c Config, cl *spec.Cluster, l *logrus.Entry) (*backupManager, error) {
+	addr := ranchutil.BackupServiceAddr(cl.Metadata.Labels["serviceName"], cl.Metadata.Labels["stackName"])
 	bm := &backupManager{
 		config:  c,
 		cluster: cl,
 		logger:  l,
-		bc:      experimentalclient.NewBackup(&http.Client{}, "http", cl.Metadata.GetName()),
+		bc:      experimentalclient.NewBackupWithAddr(&http.Client{}, "http", addr),
 	}
 	var err error
 	bm.s, err = bm.setupStorage()
@@ -115,25 +119,57 @@ func (bm *backupManager) setup() error {
 }
 
 func (bm *backupManager) runSidecar() error {
-	cl, c := bm.cluster, bm.config
-	podSpec, err := k8sutil.NewBackupPodSpec(cl.Metadata.Name, "FIXME", cl.Spec)
+	client := bm.config.Client.Env(bm.cluster.Metadata.Namespace)
+
+	backupPolicy, err := json.Marshal(bm.cluster.Spec.Backup)
 	if err != nil {
 		return err
 	}
-	switch cl.Spec.Backup.StorageType {
-	case spec.BackupStorageTypeDefault, spec.BackupStorageTypePersistentVolume:
-		podSpec = k8sutil.PodSpecWithPV(podSpec, cl.Metadata.Name)
-	case spec.BackupStorageTypeS3:
-		podSpec = k8sutil.PodSpecWithS3(podSpec, c.S3Context)
+	service := &rancher.Service{
+		LaunchConfig: &rancher.LaunchConfig{
+			ImageUuid: "docker:" + constants.BackupImage,
+			Command: []string{
+				"rancher",
+				"backup",
+				"--cluster-name=" + bm.cluster.Metadata.Name,
+			},
+			Environment: map[string]interface{}{
+				env.BackupPolicy: string(backupPolicy),
+			},
+			Labels: map[string]interface{}{
+				"io.rancher.container.create_agent": "true",
+				"io.rancher.container.agent.role":   "environmentAdmin",
+			},
+			System: true,
+		},
+		Name:          bm.cluster.Metadata.Labels["serviceName"] + "-backup",
+		Scale:         1,
+		StackId:       bm.cluster.Metadata.Labels["stackId"],
+		StartOnCreate: true,
+		System:        true,
 	}
-	if err = bm.createBackupReplicaSet(*podSpec); err != nil {
-		return fmt.Errorf("failed to create backup replica set: %v", err)
-	}
-	if err = bm.createBackupService(); err != nil {
-		return fmt.Errorf("failed to create backup service: %v", err)
-	}
-	bm.logger.Info("backup replica set and service created")
-	return nil
+
+	service, err = client.Service.Create(service)
+	return err
+
+	// cl, c := bm.cluster, bm.config
+	// podSpec, err := k8sutil.NewBackupPodSpec(cl.Metadata.Name, "FIXME", cl.Spec)
+	// if err != nil {
+	// 	return err
+	// }
+	// switch cl.Spec.Backup.StorageType {
+	// case spec.BackupStorageTypeDefault, spec.BackupStorageTypePersistentVolume:
+	// 	podSpec = k8sutil.PodSpecWithPV(podSpec, cl.Metadata.Name)
+	// case spec.BackupStorageTypeS3:
+	// 	podSpec = k8sutil.PodSpecWithS3(podSpec, c.S3Context)
+	// }
+	// if err = bm.createBackupReplicaSet(*podSpec); err != nil {
+	// 	return fmt.Errorf("failed to create backup replica set: %v", err)
+	// }
+	// if err = bm.createBackupService(); err != nil {
+	// 	return fmt.Errorf("failed to create backup service: %v", err)
+	// }
+	// bm.logger.Info("backup replica set and service created")
 }
 
 func (bm *backupManager) createBackupReplicaSet(podSpec v1.PodSpec) error {

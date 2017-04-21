@@ -89,13 +89,14 @@ type Cluster struct {
 func New(config Config, cl *spec.Cluster, stopC <-chan struct{}, wg *sync.WaitGroup) *Cluster {
 	lg := logrus.WithField("pkg", "cluster").WithField("cluster-name", cl.Metadata.Name)
 	c := &Cluster{
-		logger:  lg,
-		config:  config,
-		cluster: cl,
-		eventCh: make(chan *clusterEvent, 100),
-		stopCh:  make(chan struct{}),
-		status:  cl.Status.Copy(),
-		gc:      garbagecollection.New(config.KubeCli, cl.Metadata.Namespace),
+		logger:        lg,
+		config:        config,
+		cluster:       cl,
+		eventCh:       make(chan *clusterEvent, 100),
+		stopCh:        make(chan struct{}),
+		status:        cl.Status.Copy(),
+		memberCounter: 1,
+		gc:            garbagecollection.New(config.KubeCli, cl.Metadata.Namespace),
 	}
 
 	wg.Add(1)

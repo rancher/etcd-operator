@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/spec"
+	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
 	rancher "github.com/rancher/go-rancher/v2"
@@ -32,6 +33,14 @@ func GetEtcdVersion(c *rancher.Container) string {
 
 func SetEtcdVersion(c *rancher.Container, version string) {
 	c.Labels["version"] = version
+}
+
+func BackupServiceAddr(serviceName, stackName string) string {
+	return fmt.Sprintf("%s:%d", BackupServiceName(serviceName, stackName), constants.DefaultBackupPodHTTPPort)
+}
+
+func BackupServiceName(serviceName, stackName string) string {
+	return fmt.Sprintf("%s-backup.%s", serviceName, stackName)
 }
 
 // CreateAndWaitPod is a workaround for self hosted and util for testing.
@@ -131,6 +140,14 @@ func labelInt(s rancher.Service, label string, def int) int {
 	return def
 }
 
+func labelDuration(s rancher.Service, label string, def time.Duration) time.Duration {
+	l := getServiceLabelValue(s, label)
+	if val, err := time.ParseDuration(l); err == nil {
+		return val
+	}
+	return def
+}
+
 func getPodPolicy(s rancher.Service) *spec.PodPolicy {
 	return &spec.PodPolicy{
 		AntiAffinity: labelBool(s, opLabel("antiaffinity"), false),
@@ -143,8 +160,9 @@ func getBackupPolicy(s rancher.Service) *spec.BackupPolicy {
 		return nil
 	}
 
+	backupInterval := int(labelDuration(s, opLabel("backup.interval"), 1800*time.Second) / time.Second)
 	bp := &spec.BackupPolicy{
-		BackupIntervalInSecond:        labelInt(s, opLabel("backup.interval"), 1800),
+		BackupIntervalInSecond:        backupInterval,
 		MaxBackups:                    labelInt(s, opLabel("backup.count"), 48),
 		CleanupBackupsOnClusterDelete: labelBool(s, opLabel("backup.delete"), false),
 	}
@@ -170,11 +188,16 @@ func getSelfHostedPolicy(s rancher.Service) *spec.SelfHostedPolicy {
 	return &spec.SelfHostedPolicy{}
 }
 
-func ClusterFromService(s rancher.Service) spec.Cluster {
+func ClusterFromService(s rancher.Service, stackName string) spec.Cluster {
 	cluster, err := GetClusterTPRObjectFromService(&s)
 	if err != nil {
 		cluster = &spec.Cluster{
 			Metadata: v1.ObjectMeta{
+				Labels: map[string]string{
+					"serviceName": s.Name,
+					"stackName":   stackName,
+					"stackId":     s.StackId,
+				},
 				Name:      s.Id,
 				Namespace: s.AccountId,
 			},

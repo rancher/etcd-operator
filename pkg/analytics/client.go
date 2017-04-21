@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	id       = "UA-42684979-8"
+	id       = "UA-98100557-1"
 	category = "etcd-operator"
 )
 

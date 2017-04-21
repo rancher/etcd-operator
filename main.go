@@ -2,13 +2,11 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"runtime"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/backup"
 	"github.com/coreos/etcd-operator/pkg/backup/env"
 	"github.com/coreos/etcd-operator/pkg/k8s"
 	"github.com/coreos/etcd-operator/pkg/k8s/chaos"
@@ -16,7 +14,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil/election"
 	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil/election/resourcelock"
 	"github.com/coreos/etcd-operator/pkg/rancher"
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/version"
 
@@ -96,7 +93,7 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:   "backup-policy",
-			EnvVar: "BACKUP_POLICY",
+			EnvVar: env.BackupPolicy,
 		},
 	}
 
@@ -194,35 +191,12 @@ func main() {
 }
 
 func kubernetesBackup(c *cli.Context) error {
-	if len(c.String("cluster-name")) == 0 {
-		panic("cluster-name not set")
-	}
-
-	p := &spec.BackupPolicy{}
-	ps := os.Getenv(env.BackupPolicy)
-	if err := json.Unmarshal([]byte(ps), p); err != nil {
-		log.Fatalf("fail to parse backup policy (%s): %v", ps, err)
-	}
-
-	kclient := k8sutil.MustNewKubeClient()
-	backup.New(kclient, c.String("cluster-name"), c.String("namespace"), *p, c.String("listen")).Run()
-
-	panic("unreachable")
+	k8s.NewBackupManager(c).Run()
 	return nil
 }
 
 func rancherBackup(c *cli.Context) error {
-	if len(c.String("cluster-name")) == 0 {
-		panic("cluster-name not set")
-	}
-
-	p := &spec.BackupPolicy{}
-	ps := os.Getenv(env.BackupPolicy)
-	if err := json.Unmarshal([]byte(ps), p); err != nil {
-		log.Fatalf("fail to parse backup policy (%s): %v", ps, err)
-	}
-
-	log.Infof("UNIMPLEMENTED")
+	rancher.NewBackupManager(c).Run()
 	return nil
 }
 
