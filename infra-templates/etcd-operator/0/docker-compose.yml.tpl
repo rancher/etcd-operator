@@ -3,7 +3,6 @@ services:
   etcd-operator:
     image: llparse/etcd-operator:dev
     command:
-    - --color=${COLOR}
     - --debug=${DEBUG}
     - rancher
     - operator
@@ -24,3 +23,5 @@ services:
       io.rancher.container.dns: 'true'
       io.rancher.container.pull_image: always
     network_mode: host
+    stdin_open: true
+    tty: true
