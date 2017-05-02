@@ -40,7 +40,7 @@ func BackupServiceAddr(serviceName, stackName string) string {
 }
 
 func BackupServiceName(serviceName, stackName string) string {
-	return fmt.Sprintf("%s-backup.%s", serviceName, stackName)
+	return fmt.Sprintf("%s-backup.%s.rancher.internal", serviceName, stackName)
 }
 
 // CreateAndWaitPod is a workaround for self hosted and util for testing.

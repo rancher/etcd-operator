@@ -55,11 +55,11 @@
     description: A comma-delimited list of label k-v pairs that a candidate node/host must have
     required: false
     type: string
-  - variable: SELF_HOSTED
-    label: Self-Hosted
-    description: Run etcd without cattle infrastructure services
-    default: false
-    type: boolean
+  # - variable: SELF_HOSTED
+  #   label: Self-Hosted
+  #   description: Run etcd without cattle infrastructure services
+  #   default: false
+  #   type: boolean
   - variable: NETWORK
     label: Network Mode
     description: The Docker Network to connect containers to (host, ipsec, bridge, etc.)

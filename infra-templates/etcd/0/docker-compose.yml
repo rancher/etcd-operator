@@ -9,7 +9,7 @@ services:
       io.rancher.operator.etcd.paused: '${PAUSED}'
       io.rancher.operator.etcd.antiaffinity: '${ANTI_AFFINITY}'
       io.rancher.operator.etcd.nodeselector: '${NODE_SELECTOR}'
-      io.rancher.operator.etcd.selfhosted: '${SELF_HOSTED}'
+      # io.rancher.operator.etcd.selfhosted: '${SELF_HOSTED}'
       io.rancher.operator.etcd.network: '${NETWORK}'
       io.rancher.operator.etcd.backup: '${ENABLE_BACKUPS}'
       io.rancher.operator.etcd.backup.interval: '${BACKUP_INTERVAL}'
