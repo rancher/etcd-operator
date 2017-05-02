@@ -1,27 +1,25 @@
 package backupstorage
 
 import (
-	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil"
+	"errors"
+	"fmt"
+
 	"github.com/coreos/etcd-operator/pkg/spec"
 
-	"k8s.io/client-go/kubernetes"
+	rancher "github.com/rancher/go-rancher/v2"
 )
 
 type pv struct {
-	clusterName   string
-	namespace     string
-	pvProvisioner string
-	backupPolicy  spec.BackupPolicy
-	kubecli       kubernetes.Interface
+	client       *rancher.RancherClient
+	volumeName   string
+	backupPolicy spec.BackupPolicy
 }
 
-func NewPVStorage(kubecli kubernetes.Interface, cn, ns, pvp string, backupPolicy spec.BackupPolicy) (Storage, error) {
+func NewPVStorage(client *rancher.RancherClient, volumeName string, backupPolicy spec.BackupPolicy) (Storage, error) {
 	s := &pv{
-		clusterName:   cn,
-		namespace:     ns,
-		pvProvisioner: pvp,
-		backupPolicy:  backupPolicy,
-		kubecli:       kubecli,
+		client:       client,
+		volumeName:   volumeName,
+		backupPolicy: backupPolicy,
 	}
 	return s, nil
 }
@@ -33,12 +31,25 @@ func (s *pv) Create() error {
 }
 
 func (s *pv) Clone(from string) error {
-	return k8sutil.CopyVolume(s.kubecli, from, s.clusterName, s.namespace)
+	// TODO copy volume
+	//return k8sutil.CopyVolume(s.kubecli, from, s.clusterName, s.namespace)
+	return nil
 }
 
 func (s *pv) Delete() error {
 	if s.backupPolicy.CleanupBackupsOnClusterDelete {
-		return k8sutil.DeletePVC(s.kubecli, s.clusterName, s.namespace)
+		coll, err := s.client.Volume.List(&rancher.ListOpts{
+			Filters: map[string]interface{}{
+				"name": s.volumeName,
+			},
+		})
+		if err != nil {
+			return err
+		}
+		if len(coll.Data) != 1 {
+			return errors.New(fmt.Sprintf("found %d volumes with name %s", len(coll.Data), s.volumeName))
+		}
+		return s.client.Volume.Delete(&coll.Data[0])
 	}
 	return nil
 }

@@ -73,6 +73,12 @@ func (c *Cluster) AsOwner() metatypes.OwnerReference {
 	}
 }
 
+func (c *Cluster) VolumeName() string {
+	return fmt.Sprintf("%s-%s",
+		c.Metadata.Labels["stackId"],
+		c.Metadata.Name)
+}
+
 type ClusterSpec struct {
 	// Size is the expected size of the etcd cluster.
 	// The etcd-operator will eventually make the size of the running

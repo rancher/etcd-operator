@@ -84,7 +84,7 @@ func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
 		if c.PVProvisioner == constants.PVProvisionerNone {
 			return nil, errNoPVForBackup
 		}
-		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Metadata.Name, cl.Metadata.Namespace, c.PVProvisioner, *b)
+		s, err = backupstorage.NewPVStorage(c.Client.Env(cl.Metadata.Namespace), cl.VolumeName(), *b)
 	case spec.BackupStorageTypeS3:
 		if len(c.S3Context.AWSConfig) == 0 {
 			return nil, errNoS3ConfigForBackup
@@ -152,11 +152,8 @@ func (bm *backupManager) runSidecar() error {
 	switch bm.cluster.Spec.Backup.StorageType {
 	case spec.BackupStorageTypePersistentVolume:
 		s.LaunchConfig.VolumeDriver = bm.cluster.Spec.Backup.PV.VolumeType
-		// not sure how to ask for stack-scope volume
-		volumeName := fmt.Sprintf("%s-%s", bm.cluster.Metadata.Labels["stackId"],
-			bm.cluster.Metadata.Name)
 		s.LaunchConfig.DataVolumes = []string{
-			fmt.Sprintf("%s:%s", volumeName, constants.BackupMountDir),
+			fmt.Sprintf("%s:%s", bm.cluster.VolumeName(), constants.BackupMountDir),
 		}
 	case spec.BackupStorageTypeS3:
 		// TODO native s3 client configuration
