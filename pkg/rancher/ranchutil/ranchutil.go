@@ -171,6 +171,7 @@ func getBackupPolicy(s rancher.Service) *spec.BackupPolicy {
 		bp.StorageType = spec.BackupStorageTypePersistentVolume
 		bp.PV = &spec.PVSource{
 			VolumeSizeInMB: labelInt(s, opLabel("backup.storage.size"), 1024),
+			VolumeType:     labelString(s, opLabel("backup.storage.driver"), ""),
 		}
 	case spec.BackupStorageTypeS3:
 		bp.StorageType = spec.BackupStorageTypeS3
@@ -195,8 +196,8 @@ func ClusterFromService(s rancher.Service, stackName string) spec.Cluster {
 			Metadata: v1.ObjectMeta{
 				Labels: map[string]string{
 					"serviceName": s.Name,
-					"stackName":   stackName,
 					"stackId":     s.StackId,
+					"stackName":   stackName,
 				},
 				Name:      s.Id,
 				Namespace: s.AccountId,

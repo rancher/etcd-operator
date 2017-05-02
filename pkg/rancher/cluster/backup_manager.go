@@ -125,7 +125,7 @@ func (bm *backupManager) runSidecar() error {
 	if err != nil {
 		return err
 	}
-	service := &rancher.Service{
+	s := &rancher.Service{
 		LaunchConfig: &rancher.LaunchConfig{
 			ImageUuid: "docker:" + constants.BackupImage,
 			Command: []string{
@@ -149,7 +149,20 @@ func (bm *backupManager) runSidecar() error {
 		System:        true,
 	}
 
-	service, err = client.Service.Create(service)
+	switch bm.cluster.Spec.Backup.StorageType {
+	case spec.BackupStorageTypePersistentVolume:
+		s.LaunchConfig.VolumeDriver = bm.cluster.Spec.Backup.PV.VolumeType
+		// not sure how to ask for stack-scope volume
+		volumeName := fmt.Sprintf("%s-%s", bm.cluster.Metadata.Labels["stackId"],
+			bm.cluster.Metadata.Name)
+		s.LaunchConfig.DataVolumes = []string{
+			fmt.Sprintf("%s:%s", volumeName, constants.BackupMountDir),
+		}
+	case spec.BackupStorageTypeS3:
+		// TODO native s3 client configuration
+	}
+
+	s, err = client.Service.Create(s)
 	return err
 
 	// cl, c := bm.cluster, bm.config
