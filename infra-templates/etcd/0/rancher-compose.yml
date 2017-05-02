@@ -65,7 +65,11 @@
     description: The Docker Network to connect containers to (host, ipsec, bridge, etc.)
     required: true
     default: ipsec
-    type: string
+    type: enum
+    options:
+    - host
+    - ipsec
+    - vxlan
   - variable: ENABLE_BACKUPS
     label: Enable Backups
     description: Periodically create backups. Enables automatic disaster recovery except for self-hosted clusters.

@@ -14,8 +14,10 @@ func etcdContainer(commands, version string) rancher.Container {
 		DataVolumes: []string{
 		//fmt.Sprintf("etcd-data:%s", etcdVolumeMountDir),
 		},
-		ImageUuid:     EtcdImageName(version),
-		Labels:        make(map[string]interface{}),
+		ImageUuid: EtcdImageName(version),
+		Labels: map[string]interface{}{
+			"io.rancher.container.dns": "true",
+		},
 		Ports:         []string{"2379", "2380"},
 		RestartPolicy: &rancher.RestartPolicy{Name: "never"},
 	}
