@@ -17,7 +17,7 @@ services:
       io.rancher.operator.etcd.backup.delete: '${CLEANUP_BACKUPS_ON_DELETE}'
       io.rancher.operator.etcd.backup.storage.type: '${STORAGE_TYPE}'
       io.rancher.operator.etcd.backup.storage.driver: '${STORAGE_DRIVER}'
-      io.rancher.operator.etcd.backup.storage.size: '${STORAGE_SIZE}'
+      # io.rancher.operator.etcd.backup.storage.size: '${STORAGE_SIZE}'
       # critically important, prevents troll containers
       io.rancher.service.selector.container: nevergonnagiveyouup=begone
     network_mode: none
