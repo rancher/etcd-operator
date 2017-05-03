@@ -60,6 +60,44 @@ proxy:
     links:
         - kubernetes
 
+etcd-operator:
+    image: llparse/etcd-operator:dev
+    command:
+    - --debug=true
+    - rancher
+    - operator
+    - --analytics=true
+    - --gc-interval=10m
+    net: host
+    labels:
+        io.rancher.container.agent.role: environmentAdmin
+        io.rancher.container.create_agent: "true"
+        io.rancher.container.dns: 'true'
+        io.rancher.container.pull_image: always
+    stdin_open: true
+    tty: true
+
+etcdv3:
+    image: rancher/none
+    net: none
+    labels:
+        io.rancher.operator: etcd
+        io.rancher.operator.etcd.size: '3'
+        io.rancher.operator.etcd.version: 3.1.5
+        io.rancher.operator.etcd.paused: 'false'
+        io.rancher.operator.etcd.antiaffinity: 'true'
+        {{- if eq .Values.CONSTRAINT_TYPE "required" }}
+        io.rancher.operator.etcd.nodeselector: etcd=true
+        {{- end }}
+        io.rancher.operator.etcd.network: 'host'
+        # io.rancher.operator.etcd.backup: '${ENABLE_BACKUPS}'
+        # io.rancher.operator.etcd.backup.interval: '${BACKUP_INTERVAL}'
+        # io.rancher.operator.etcd.backup.count: '${BACKUP_COUNT}'
+        # io.rancher.operator.etcd.backup.delete: '${CLEANUP_BACKUPS_ON_DELETE}'
+        # io.rancher.operator.etcd.backup.storage.type: '${STORAGE_TYPE}'
+        # io.rancher.operator.etcd.backup.storage.driver: '${STORAGE_DRIVER}'
+        io.rancher.service.selector.container: T3J6EntxHCTzVp=a9vHZuWXvFu6ma
+
 etcd:
     image: rancher/etcd:v2.3.7-11
     labels:
@@ -101,7 +139,7 @@ kubernetes:
     command:
         - kube-apiserver
         - --service-cluster-ip-range=10.43.0.0/16
-        - --etcd-servers=http://etcd.kubernetes.rancher.internal:2379
+        - --etcd-servers=http://etcdv3.kubernetes.rancher.internal:2379
         - --insecure-bind-address=0.0.0.0
         - --insecure-port=80
         - --cloud-provider=${CLOUD_PROVIDER}
