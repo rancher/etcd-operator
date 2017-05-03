@@ -96,7 +96,7 @@ etcdv3:
         # io.rancher.operator.etcd.backup.delete: '${CLEANUP_BACKUPS_ON_DELETE}'
         # io.rancher.operator.etcd.backup.storage.type: '${STORAGE_TYPE}'
         # io.rancher.operator.etcd.backup.storage.driver: '${STORAGE_DRIVER}'
-        io.rancher.service.selector.container: T3J6EntxHCTzVp=a9vHZuWXvFu6ma
+        io.rancher.service.selector.container: app=etcd,cluster=${service_id}
 
 etcd:
     image: rancher/etcd:v2.3.7-11
@@ -153,7 +153,7 @@ kubernetes:
         KUBERNETES_URL: https://kubernetes.kubernetes.rancher.internal:6443
     image: rancher/k8s:v1.5.4-rancher1-4
     links:
-        - etcd
+        - etcdv3
 
 kube-hostname-updater:
     net: container:kubernetes
