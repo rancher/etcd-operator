@@ -83,7 +83,7 @@
     type: enum
     options:
     - PersistentVolume
-    - S3
+    # - S3
   - variable: STORAGE_DRIVER
     label: Storage Driver
     description: If using PersistentVolume storage type, specify the driver to use.
