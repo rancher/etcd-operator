@@ -35,33 +35,3 @@ etcdv3:
         # io.rancher.operator.etcd.backup.storage.type: '${STORAGE_TYPE}'
         # io.rancher.operator.etcd.backup.storage.driver: '${STORAGE_DRIVER}'
         io.rancher.service.selector.container: app=etcd,cluster=${service_id}
-
-etcd:
-    image: rancher/etcd:v2.3.7-11
-    labels:
-        {{- if eq .Values.CONSTRAINT_TYPE "required" }}
-        io.rancher.scheduler.affinity:host_label: etcd=true
-        {{- end }}
-        io.rancher.scheduler.affinity:container_label_ne: io.rancher.stack_service.name=$${stack_name}/$${service_name}
-        io.rancher.sidekicks: data
-    environment:
-        RANCHER_DEBUG: 'true'
-        EMBEDDED_BACKUPS: '${EMBEDDED_BACKUPS}'
-        BACKUP_PERIOD: '${BACKUP_PERIOD}'
-        BACKUP_RETENTION: '${BACKUP_RETENTION}'
-        ETCD_HEARTBEAT_INTERVAL: '${ETCD_HEARTBEAT_INTERVAL}'
-        ETCD_ELECTION_TIMEOUT: '${ETCD_ELECTION_TIMEOUT}'
-    volumes:
-    - etcd:/pdata
-    - /var/etcd/backups:/data-backup
-    volumes_from:
-    - data
-
-data:
-    image: busybox
-    entrypoint: /bin/true
-    net: none
-    volumes:
-    - /data
-    labels:
-        io.rancher.container.start_once: 'true'
