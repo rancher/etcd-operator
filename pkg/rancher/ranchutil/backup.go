@@ -25,6 +25,15 @@ const (
 	PVBackupV1 = "v1" // TODO: refactor and combine this with pkg/backup.PVBackupV1
 )
 
+func CreateVolume(client *rancher.RancherClient, name, driver string) error {
+	_, err := client.Volume.Create(&rancher.Volume{
+		Name:       name,
+		Driver:     driver,
+		DriverOpts: map[string]interface{}{},
+	})
+	return err
+}
+
 func CopyVolume(client *rancher.RancherClient, fromClusterName, toClusterName string) error {
 	from := path.Join(fromDirMountDir, PVBackupV1, fromClusterName)
 	to := path.Join(constants.BackupMountDir, PVBackupV1, toClusterName)
@@ -44,8 +53,8 @@ func CopyVolume(client *rancher.RancherClient, fromClusterName, toClusterName st
 			Name: "never",
 		},
 		DataVolumes: []string{
-			strings.Join([]string{makePVCName(fromClusterName), fromDirMountDir, "ro"}, ":"),
-			strings.Join([]string{makePVCName(toClusterName), constants.BackupMountDir}, ":"),
+			strings.Join([]string{fromClusterName, fromDirMountDir, "ro"}, ":"),
+			strings.Join([]string{toClusterName, constants.BackupMountDir}, ":"),
 		},
 	}
 
@@ -72,15 +81,9 @@ func CopyVolume(client *rancher.RancherClient, fromClusterName, toClusterName st
 	if err != nil {
 		return fmt.Errorf("failed to wait backup copy container (%s) to succeed: %v", c.Name, err)
 	}
-	// FIXME uncomment
-	// return client.Container.Delete(c)
-	return nil
+	return client.Container.Delete(c)
 }
 
 func copyVolumePodName(clusterName string) string {
 	return clusterName + "-copyvolume"
-}
-
-func makePVCName(clusterName string) string {
-	return fmt.Sprintf("%s-pvc", clusterName)
 }

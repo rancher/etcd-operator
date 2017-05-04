@@ -183,7 +183,8 @@ func getBackupPolicy(s rancher.Service) *spec.BackupPolicy {
 }
 
 func getRestorePolicy(s rancher.Service) *spec.RestorePolicy {
-	if oldCluster := labelString(s, opLabel("restore.from"), ""); oldCluster != "" {
+	oldCluster := labelString(s, opLabel("restore.from"), "")
+	if oldCluster != "" {
 		return &spec.RestorePolicy{
 			BackupClusterName: oldCluster,
 			StorageType:       spec.BackupStorageTypePersistentVolume,

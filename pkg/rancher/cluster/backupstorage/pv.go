@@ -27,9 +27,7 @@ func NewPVStorage(client *rancher.RancherClient, volumeName string, backupPolicy
 }
 
 func (s *pv) Create() error {
-	// TODO create volume? doesn't really matter..
-	return nil
-	//return k8sutil.CreateAndWaitPVC(s.kubecli, s.clusterName, s.namespace, s.pvProvisioner, s.backupPolicy.PV.VolumeSizeInMB)
+	return ranchutil.CreateVolume(s.client, s.volumeName, s.backupPolicy.PV.VolumeType)
 }
 
 func (s *pv) Clone(from string) error {

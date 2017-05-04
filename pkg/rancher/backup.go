@@ -85,7 +85,7 @@ func (s Snapshot) Save(lastSnapRev int64) (*etcdutil.Member, int64) {
 }
 
 func getMemberWithMaxRev(containers []rancher.Container) (*etcdutil.Member, int64) {
-	logrus.Info("getMemberWithMaxRev(%d)", len(containers))
+	logrus.Infof("getMemberWithMaxRev(%d)", len(containers))
 	var member *etcdutil.Member
 	maxRev := int64(0)
 	for _, container := range containers {
