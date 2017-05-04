@@ -28,13 +28,13 @@ etcdv3:
         io.rancher.operator.etcd.nodeselector: etcd=true
         {{- end }}
         io.rancher.operator.etcd.network: 'host'
-        io.rancher.operator.etcd.upgrade.from: etcd
-        # io.rancher.operator.etcd.backup: '${ENABLE_BACKUPS}'
-        # io.rancher.operator.etcd.backup.interval: '${BACKUP_INTERVAL}'
-        # io.rancher.operator.etcd.backup.count: '${BACKUP_COUNT}'
-        # io.rancher.operator.etcd.backup.delete: '${CLEANUP_BACKUPS_ON_DELETE}'
-        # io.rancher.operator.etcd.backup.storage.type: '${STORAGE_TYPE}'
-        # io.rancher.operator.etcd.backup.storage.driver: '${STORAGE_DRIVER}'
+        io.rancher.operator.etcd.restore.from: etcd
+        io.rancher.operator.etcd.backup: 'true'
+        io.rancher.operator.etcd.backup.interval: 1m
+        io.rancher.operator.etcd.backup.count: '60'
+        io.rancher.operator.etcd.backup.delete: 'false'
+        io.rancher.operator.etcd.backup.storage.type: PersistentVolume
+        io.rancher.operator.etcd.backup.storage.driver: local
         io.rancher.service.selector.container: app=etcd,cluster=${service_id}
 
 etcd:

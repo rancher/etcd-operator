@@ -166,7 +166,7 @@ func getBackupPolicy(s rancher.Service) *spec.BackupPolicy {
 		MaxBackups:                    labelInt(s, opLabel("backup.count"), 48),
 		CleanupBackupsOnClusterDelete: labelBool(s, opLabel("backup.delete"), false),
 	}
-	switch labelString(s, opLabel("backup.storage.type"), "") {
+	switch labelString(s, opLabel("backup.storage.type"), spec.BackupStorageTypePersistentVolume) {
 	case spec.BackupStorageTypePersistentVolume:
 		bp.StorageType = spec.BackupStorageTypePersistentVolume
 		bp.PV = &spec.PVSource{
@@ -183,9 +183,10 @@ func getBackupPolicy(s rancher.Service) *spec.BackupPolicy {
 }
 
 func getRestorePolicy(s rancher.Service) *spec.RestorePolicy {
-	if oldCluster := labelString(s, opLabel("upgrade.from"), ""); oldCluster != "" {
+	if oldCluster := labelString(s, opLabel("restore.from"), ""); oldCluster != "" {
 		return &spec.RestorePolicy{
 			BackupClusterName: oldCluster,
+			StorageType:       spec.BackupStorageTypePersistentVolume,
 		}
 	}
 	return nil
