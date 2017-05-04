@@ -28,6 +28,7 @@ etcdv3:
         io.rancher.operator.etcd.nodeselector: etcd=true
         {{- end }}
         io.rancher.operator.etcd.network: 'host'
+        io.rancher.operator.etcd.upgrade.from: etcd
         # io.rancher.operator.etcd.backup: '${ENABLE_BACKUPS}'
         # io.rancher.operator.etcd.backup.interval: '${BACKUP_INTERVAL}'
         # io.rancher.operator.etcd.backup.count: '${BACKUP_COUNT}'

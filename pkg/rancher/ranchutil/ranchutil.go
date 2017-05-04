@@ -182,6 +182,15 @@ func getBackupPolicy(s rancher.Service) *spec.BackupPolicy {
 	return bp
 }
 
+func getRestorePolicy(s rancher.Service) *spec.RestorePolicy {
+	if oldCluster := labelString(s, opLabel("upgrade.from"), ""); oldCluster != "" {
+		return &spec.RestorePolicy{
+			BackupClusterName: oldCluster,
+		}
+	}
+	return nil
+}
+
 func getSelfHostedPolicy(s rancher.Service) *spec.SelfHostedPolicy {
 	if !labelBool(s, opLabel("selfhosted"), false) {
 		return nil
@@ -206,14 +215,13 @@ func ClusterFromService(s rancher.Service, stackName string) spec.Cluster {
 	}
 	// overlay the spec with label values
 	cluster.Spec = spec.ClusterSpec{
-		Size:    labelInt(s, opLabel("size"), 1),
-		Version: labelString(s, opLabel("version"), "3.1.4"),
-		Paused:  labelBool(s, opLabel("paused"), false),
-		Network: labelString(s, opLabel("network"), "host"),
-		Pod:     getPodPolicy(s),
-		Backup:  getBackupPolicy(s),
-		// must be nil if not set, don't create empty object
-		//Restore:    &spec.RestorePolicy{},
+		Size:       labelInt(s, opLabel("size"), 1),
+		Version:    labelString(s, opLabel("version"), "3.1.4"),
+		Paused:     labelBool(s, opLabel("paused"), false),
+		Network:    labelString(s, opLabel("network"), "host"),
+		Pod:        getPodPolicy(s),
+		Backup:     getBackupPolicy(s),
+		Restore:    getRestorePolicy(s),
 		SelfHosted: getSelfHostedPolicy(s),
 		//TLS: &spec.TLSPolicy{},
 	}

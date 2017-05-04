@@ -3,7 +3,9 @@ package backupstorage
 import (
 	"errors"
 	"fmt"
+	"strings"
 
+	"github.com/coreos/etcd-operator/pkg/rancher/ranchutil"
 	"github.com/coreos/etcd-operator/pkg/spec"
 
 	rancher "github.com/rancher/go-rancher/v2"
@@ -31,9 +33,26 @@ func (s *pv) Create() error {
 }
 
 func (s *pv) Clone(from string) error {
-	// TODO copy volume
-	//return k8sutil.CopyVolume(s.kubecli, from, s.clusterName, s.namespace)
-	return nil
+	fromVolumeName := from
+
+	// translate service name into service id
+	if !strings.HasPrefix(from, "1s") {
+		coll, err := s.client.Service.List(&rancher.ListOpts{})
+		if err != nil {
+			return err
+		}
+		for _, service := range coll.Data {
+			if service.Name == from {
+				fromVolumeName = service.Id
+				break
+			}
+		}
+		if fromVolumeName == from {
+			return errors.New(fmt.Sprintf("couldn't find service with name %s", from))
+		}
+	}
+
+	return ranchutil.CopyVolume(s.client, fromVolumeName, s.volumeName)
 }
 
 func (s *pv) Delete() error {

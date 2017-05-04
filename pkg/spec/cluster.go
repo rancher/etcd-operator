@@ -74,9 +74,7 @@ func (c *Cluster) AsOwner() metatypes.OwnerReference {
 }
 
 func (c *Cluster) VolumeName() string {
-	return fmt.Sprintf("%s-%s",
-		c.Metadata.Labels["stackId"],
-		c.Metadata.Name)
+	return c.Metadata.Name
 }
 
 type ClusterSpec struct {
