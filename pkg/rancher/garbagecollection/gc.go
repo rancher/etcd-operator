@@ -87,6 +87,7 @@ func (gc *GC) FullyCollect() error {
 			defer wg.Done()
 			envId := c.AccountId
 			ranchutil.SetResourceContext(&c.Resource, envId)
+			// TODO we should delete container/volume independent of eachother
 			if err := gc.collectContainer(&c); err == nil {
 				gc.collectVolumesByName(envId, c.Name)
 			}
@@ -133,11 +134,13 @@ func (gc *GC) collectContainer(c *rancher.Container) error {
 
 	if err != nil {
 		gc.logger.WithFields(log.Fields{
+			"id":    c.Id,
 			"name":  c.Name,
 			"error": err,
 		}).Warn("delete container failed")
 	} else {
 		gc.logger.WithFields(log.Fields{
+			"id":   c.Id,
 			"name": c.Name,
 		}).Info("deleted container")
 	}
@@ -154,15 +157,17 @@ func (gc *GC) collectVolume(v *rancher.Volume) error {
 
 	if err != nil {
 		gc.logger.WithFields(log.Fields{
+			"id":    v.Id,
 			"name":  v.Name,
 			"error": err,
 		}).Warn("delete volume failed")
 	} else {
 		gc.logger.WithFields(log.Fields{
+			"id":   v.Id,
 			"name": v.Name,
 		}).Info("deleted volume")
 	}
-	return err	
+	return err
 }
 
 func newListOpts() *rancher.ListOpts {

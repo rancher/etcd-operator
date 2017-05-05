@@ -14,6 +14,17 @@
 
 package cluster
 
+import (
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/coreos/etcd-operator/pkg/rancher/ranchutil"
+	"github.com/coreos/etcd-operator/pkg/util/retryutil"
+
+	rancher "github.com/rancher/go-rancher/v2"
+)
+
 // FIXME
 // rancher doesn't have ability to upgrade bare containers,
 // so we will need to implement it.
@@ -22,21 +33,46 @@ package cluster
 // we will need to update cluster membership as part of this process.
 func (c *Cluster) upgradeOneMember(memberName string) error {
 	c.status.AppendUpgradingCondition(c.cluster.Spec.Version, memberName)
-	c.logger.Warnf("upgradeOneMember is unimplemented")
-	return nil
-	// ns := c.cluster.Metadata.Namespace
 
-	// pod, err := c.config.KubeCli.CoreV1().Pods(ns).Get(memberName)
-	// if err != nil {
-	// 	return fmt.Errorf("fail to get pod (%s): %v", memberName, err)
-	// }
-	// c.logger.Infof("upgrading the etcd member %v from %s to %s", memberName, k8sutil.GetEtcdVersion(pod), c.cluster.Spec.Version)
-	// pod.Spec.Containers[0].Image = k8sutil.EtcdImageName(c.cluster.Spec.Version)
-	// k8sutil.SetEtcdVersion(pod, c.cluster.Spec.Version)
-	// _, err = c.config.KubeCli.CoreV1().Pods(ns).Update(pod)
-	// if err != nil {
-	// 	return fmt.Errorf("fail to update the etcd member (%s): %v", memberName, err)
-	// }
-	// c.logger.Infof("finished upgrading the etcd member %v", memberName)
-	// return nil
+	coll, err := c.getClient().Container.List(&rancher.ListOpts{
+		Filters: map[string]interface{}{
+			"name": memberName,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	if len(coll.Data) != 1 {
+		return errors.New(fmt.Sprintf("expected one container with name %s, found %d", memberName, len(coll.Data)))
+	}
+	container := &coll.Data[0]
+
+	err = c.getClient().Container.Delete(container)
+	if err != nil {
+		return err
+	}
+
+	c.logger.Infof("upgrading the etcd member %s from %s to %s", memberName, ranchutil.GetEtcdVersion(container), c.cluster.Spec.Version)
+	container.ImageUuid = ranchutil.EtcdImageName(c.cluster.Spec.Version)
+	container.Id = ""
+	container.Labels["version"] = c.cluster.Spec.Version
+	// unset these so ipsec doesn't go haywire
+	container.PrimaryIpAddress = ""
+	delete(container.Labels, "io.rancher.cni.network")
+	delete(container.Labels, "io.rancher.cni.wait")
+	delete(container.Labels, "io.rancher.container.ip")
+	delete(container.Labels, "io.rancher.container.mac_address")
+	delete(container.Labels, "io.rancher.container.uuid")
+
+	err = retryutil.Retry(10*time.Second, 6, func() (bool, error) {
+		if _, err := c.getClient().Container.Create(container); err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("fail to update the etcd member (%s): %v", memberName, err)
+	}
+	c.logger.Infof("finished upgrading the etcd member %v", memberName)
+	return nil
 }
