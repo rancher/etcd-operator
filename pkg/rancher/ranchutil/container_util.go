@@ -101,6 +101,10 @@ func newEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, 
 	c.Labels["app"] = "etcd"
 	c.Labels["name"] = m.Name
 	c.Labels["cluster"] = clusterName
+	// use a named volume for upgrade support
+	c.DataVolumes = []string{
+		fmt.Sprintf("%s:%s", m.Name, etcdVolumeMountDir),
+	}
 
 	SetEtcdVersion(&c, cs.Version)
 	return &c

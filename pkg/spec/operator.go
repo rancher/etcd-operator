@@ -17,9 +17,7 @@ type Operator struct {
 	OptIn      bool
 }
 
-// Controller has a few key responsibilities:
-// 1. Watch for new/modified/deleted cluster configuration
-// 2. Perform reconciliation on each cluster
+// Controller watches for created/modified/deleted clusters
 type Controller interface {
 	Run() error
 }
