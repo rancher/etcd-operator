@@ -63,6 +63,8 @@ func (c *Cluster) upgradeOneMember(memberName string) error {
 	delete(container.Labels, "io.rancher.container.ip")
 	delete(container.Labels, "io.rancher.container.mac_address")
 	delete(container.Labels, "io.rancher.container.uuid")
+	// schedule to the same host to pick up the old data
+	container.RequestedHostId = container.HostId
 
 	err = retryutil.Retry(10*time.Second, 6, func() (bool, error) {
 		if _, err := c.getClient().Container.Create(container); err != nil {
