@@ -1,5 +1,5 @@
 etcd:
-    image: llparse/etcd:v3.1.7-beta.0
+    image: llparse/etcd:v3.0.17-beta.0
     labels:
         {{- if eq .Values.CONSTRAINT_TYPE "required" }}
         io.rancher.scheduler.affinity:host_label: etcd=true
