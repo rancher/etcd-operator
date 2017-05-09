@@ -28,7 +28,6 @@ etcdv3:
         io.rancher.operator.etcd.nodeselector: etcd=true
         {{- end }}
         io.rancher.operator.etcd.network: 'host'
-        io.rancher.operator.etcd.restore.from: etcd
         io.rancher.operator.etcd.backup: 'true'
         io.rancher.operator.etcd.backup.interval: 1m
         io.rancher.operator.etcd.backup.count: '60'
@@ -36,35 +35,3 @@ etcdv3:
         io.rancher.operator.etcd.backup.storage.type: PersistentVolume
         io.rancher.operator.etcd.backup.storage.driver: local
         io.rancher.service.selector.container: app=etcd,cluster=${service_id}
-
-etcd:
-    image: llparse/etcd:v3.1.7-beta.0
-    labels:
-        {{- if eq .Values.CONSTRAINT_TYPE "required" }}
-        io.rancher.scheduler.affinity:host_label: etcd=true
-        {{- end }}
-        io.rancher.scheduler.affinity:container_label_ne: io.rancher.stack_service.name=$${stack_name}/$${service_name}
-        io.rancher.sidekicks: data
-        io.rancher.container.pull_image: always
-    environment:
-        RANCHER_DEBUG: 'true'
-        EMBEDDED_BACKUPS: '${EMBEDDED_BACKUPS}'
-        BACKUP_PERIOD: '${BACKUP_PERIOD}'
-        BACKUP_RETENTION: '${BACKUP_RETENTION}'
-        ETCD_HEARTBEAT_INTERVAL: '${ETCD_HEARTBEAT_INTERVAL}'
-        ETCD_ELECTION_TIMEOUT: '${ETCD_ELECTION_TIMEOUT}'
-        ETCD_MIGRATE: v3
-    volumes:
-    - etcd:/pdata
-    - /var/etcd/backups:/data-backup
-    volumes_from:
-    - data
-
-data:
-    image: busybox
-    entrypoint: /bin/true
-    net: none
-    volumes:
-    - /data
-    labels:
-        io.rancher.container.start_once: 'true'
