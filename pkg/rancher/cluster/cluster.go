@@ -331,7 +331,7 @@ func (c *Cluster) startSeedMember(recoverFromBackup bool) error {
 		Provider:  "rancher",
 	}
 	ms := etcdutil.NewMemberSet(m)
-	if err := c.createPod(ms, m, "new", recoverFromBackup); err != nil {
+	if err := c.createPod(ms, m, "new", recoverFromBackup, false); err != nil {
 		return fmt.Errorf("failed to create seed member (%s): %v", m.Name, err)
 	}
 	c.memberCounter++
@@ -379,7 +379,7 @@ func (c *Cluster) deleteClientServiceLB() error {
 	return nil
 }
 
-func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery bool) error {
+func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, state string, needRecovery, upgrade bool) error {
 	token := ""
 	if state == "new" {
 		token = uuid.New()
@@ -391,6 +391,10 @@ func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, stat
 		ranchutil.ContainerWithRestoreCommand(container, backupAddr, token, c.cluster.Spec.Version, m)
 	}
 	ranchutil.ContainerWithSleepWaitNetwork(container)
+
+	if !upgrade {
+		ranchutil.DeleteLocalVolumesByName(c.getClient(), container.Name)
+	}
 
 	_, err := c.getClient().Container.Create(container)
 	return err

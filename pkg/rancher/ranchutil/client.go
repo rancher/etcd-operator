@@ -168,6 +168,17 @@ func (c *ContextAwareClient) ListEtcdServices(envId string) ([]rancher.Service, 
 }
 
 func FindVolumeByName(c *rancher.RancherClient, name string) (*rancher.Volume, error) {
+	vols, err := FindVolumesByName(c, name)
+	if err != nil {
+		return nil, err
+	}
+	if len(vols) != 1 {
+		return nil, errors.New(fmt.Sprintf("found %d volume with name %s, expecting 1", len(vols), name))
+	}
+	return &vols[0], nil
+}
+
+func FindVolumesByName(c *rancher.RancherClient, name string) ([]rancher.Volume, error) {
 	coll, err := c.Volume.List(&rancher.ListOpts{
 		Filters: map[string]interface{}{
 			"name": name,
@@ -176,10 +187,17 @@ func FindVolumeByName(c *rancher.RancherClient, name string) (*rancher.Volume, e
 	if err != nil {
 		return nil, err
 	}
-	if len(coll.Data) != 1 {
-		return nil, errors.New(fmt.Sprintf("found %d volume with name %s, expecting 1", len(coll.Data), name))
+	return coll.Data, nil
+}
+
+func DeleteLocalVolumesByName(c *rancher.RancherClient, name string) {
+	if vols, err := FindVolumesByName(c, name); err == nil {
+		for _, vol := range vols {
+			if vol.State != "active" && vol.StorageDriverId == "" {
+				c.Volume.Delete(&vol)
+			}
+		}
 	}
-	return &coll.Data[0], nil
 }
 
 func GetEtcdServices(c *rancher.RancherClient) ([]rancher.Service, error) {

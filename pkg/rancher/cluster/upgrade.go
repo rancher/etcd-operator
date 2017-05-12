@@ -52,6 +52,7 @@ func (c *Cluster) upgradeOneMember(memberName string) error {
 		return err
 	}
 
+	// TODO reuse createPod() with upgrade=true
 	c.logger.Infof("upgrading the etcd member %s from %s to %s", memberName, ranchutil.GetEtcdVersion(container), c.cluster.Spec.Version)
 	container.ImageUuid = ranchutil.EtcdImageName(c.cluster.Spec.Version)
 	container.Id = ""
