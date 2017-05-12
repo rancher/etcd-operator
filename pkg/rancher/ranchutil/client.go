@@ -1,6 +1,8 @@
 package ranchutil
 
 import (
+	"errors"
+	"fmt"
 	"net/url"
 	"os"
 	"strings"
@@ -163,6 +165,21 @@ func SetResourceContext(r *rancher.Resource, envId string) {
 
 func (c *ContextAwareClient) ListEtcdServices(envId string) ([]rancher.Service, error) {
 	return GetEtcdServices(c.Env(envId))
+}
+
+func FindVolumeByName(c *rancher.RancherClient, name string) (*rancher.Volume, error) {
+	coll, err := c.Volume.List(&rancher.ListOpts{
+		Filters: map[string]interface{}{
+			"name": name,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(coll.Data) != 1 {
+		return nil, errors.New(fmt.Sprintf("found %d volume with name %s, expecting 1", len(coll.Data), name))
+	}
+	return &coll.Data[0], nil
 }
 
 func GetEtcdServices(c *rancher.RancherClient) ([]rancher.Service, error) {

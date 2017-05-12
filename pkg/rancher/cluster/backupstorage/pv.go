@@ -31,22 +31,26 @@ func (s *pv) Create() error {
 }
 
 func (s *pv) Clone(from string) error {
+	// assume user specified a volume by name
 	fromVolumeName := from
 
-	// translate service name into service id
-	if !strings.HasPrefix(from, "1s") {
-		coll, err := s.client.Service.List(&rancher.ListOpts{})
-		if err != nil {
-			return err
-		}
-		for _, service := range coll.Data {
-			if service.Name == from {
-				fromVolumeName = service.Id
-				break
+	// if a volume with matching name and an attached storage driver exists, use it
+	if v, err := ranchutil.FindVolumeByName(from); err == nil && v.StorageDriverId != "" {
+		// translate service name into service id
+		if !strings.HasPrefix(from, "1s") {
+			coll, err2 := s.client.Service.List(&rancher.ListOpts{})
+			if err2 != nil {
+				return err2
 			}
-		}
-		if fromVolumeName == from {
-			return errors.New(fmt.Sprintf("couldn't find service with name %s", from))
+			for _, service := range coll.Data {
+				if service.Name == from {
+					fromVolumeName = service.Id
+					break
+				}
+			}
+			if fromVolumeName == from {
+				return errors.New(fmt.Sprintf("couldn't find service with name %s", from))
+			}
 		}
 	}
 
