@@ -73,8 +73,13 @@ func (c *Cluster) AsOwner() metatypes.OwnerReference {
 	}
 }
 
+// VolumeName returns a name unique to the cluster which will be used for storing backups
 func (c *Cluster) VolumeName() string {
-	return c.Metadata.Name
+	return fmt.Sprintf("%s-%s", c.Metadata.Labels["serviceName"], c.Metadata.Labels["serviceId"])
+}
+
+func (c *Cluster) Name() string {
+	return fmt.Sprintf("%s-%s", c.Metadata.Labels["stackName"], c.Metadata.Labels["serviceName"])
 }
 
 type ClusterSpec struct {

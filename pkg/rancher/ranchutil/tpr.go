@@ -92,7 +92,7 @@ func UpdateClusterTPRObjectUnconditionally(client *rancher.RancherClient, ns str
 }
 
 func updateClusterTPRObject(client *rancher.RancherClient, ns string, c *spec.Cluster) (*spec.Cluster, error) {
-	s, err := client.Service.ById(c.Metadata.Name)
+	s, err := client.Service.ById(c.Metadata.Labels["serviceId"])
 	if err != nil {
 		return nil, err
 	}

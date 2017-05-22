@@ -35,8 +35,8 @@ func CreateVolume(client *rancher.RancherClient, name, driver string) error {
 }
 
 func CopyVolume(client *rancher.RancherClient, fromClusterName, toClusterName string) error {
-	from := path.Join(fromDirMountDir, PVBackupV1, fromClusterName)
-	to := path.Join(constants.BackupMountDir, PVBackupV1, toClusterName)
+	from := path.Join(fromDirMountDir, PVBackupV1)
+	to := path.Join(constants.BackupMountDir, PVBackupV1)
 
 	c := &rancher.Container{
 		Name: copyVolumePodName(toClusterName),

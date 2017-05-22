@@ -34,8 +34,8 @@ func (s *pv) Clone(from string) error {
 	// assume user specified a volume by name
 	fromVolumeName := from
 
-	// if a volume with matching name and an attached storage driver exists, use it
-	if v, err := ranchutil.FindVolumeByName(s.client, from); err == nil && v.StorageDriverId != "" {
+	// if a volume with matching name and an attached storage driver isn't found, lookup service id/name
+	if v, err := ranchutil.FindVolumeByName(s.client, from); err != nil || v.StorageDriverId == "" {
 		// translate service name into service id
 		if !strings.HasPrefix(from, "1s") {
 			coll, err2 := s.client.Service.List(&rancher.ListOpts{})

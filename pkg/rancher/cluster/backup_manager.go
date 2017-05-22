@@ -131,7 +131,7 @@ func (bm *backupManager) runSidecar() error {
 			Command: []string{
 				"rancher",
 				"backup",
-				"--cluster-name=" + bm.cluster.Metadata.Name,
+				"--cluster-name=" + bm.cluster.Name(),
 			},
 			Environment: map[string]interface{}{
 				env.BackupPolicy: string(backupPolicy),

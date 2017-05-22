@@ -206,11 +206,12 @@ func ClusterFromService(s rancher.Service, stackName string) spec.Cluster {
 		cluster = &spec.Cluster{
 			Metadata: v1.ObjectMeta{
 				Labels: map[string]string{
+					"serviceId":   s.Id,
 					"serviceName": s.Name,
 					"stackId":     s.StackId,
 					"stackName":   stackName,
 				},
-				Name:      s.Id,
+				Name:      fmt.Sprintf("%s-%s", stackName, s.Name),
 				Namespace: s.AccountId,
 			},
 		}
