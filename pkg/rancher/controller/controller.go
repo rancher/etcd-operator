@@ -238,13 +238,10 @@ func (c *Controller) findAllClusters() (map[string]spec.Cluster, error) {
 			stackName = st.Name
 		}
 
-		// we need to update each service proactively to work around
-		// bugs/limitation of rancher ui service creation
+		// we need to update each service proactively to work around selector limitation
 		if s.Scale > 0 {
 			s2 := s
 			s2.SelectorContainer = fmt.Sprintf("app=etcd,cluster=%s-%s", stackName, s.Name)
-			s2.Scale = 0
-			s2.StartOnCreate = false
 			// we have to adjust the context here from global -> environment to make changes
 			ranchutil.SetResourceContext(&s.Resource, s.AccountId)
 			if _, err := client.Service.Update(&s, &s2); err != nil {

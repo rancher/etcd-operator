@@ -216,6 +216,14 @@ func ClusterFromService(s rancher.Service, stackName string) spec.Cluster {
 			},
 		}
 	}
+
+	// merge ETCD environment variables into metadata labels
+	for k, v := range s.LaunchConfig.Environment {
+		if strings.HasPrefix(k, "ETCD_") {
+			cluster.Metadata.Labels[k] = v.(string)
+		}
+	}
+
 	// overlay the spec with label values
 	cluster.Spec = spec.ClusterSpec{
 		Size:       labelInt(s, opLabel("size"), 1),

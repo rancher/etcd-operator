@@ -110,8 +110,16 @@ func newEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, 
 	return &c
 }
 
-func NewEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cs spec.ClusterSpec) *rancher.Container {
+func NewEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, state, token string, cl *spec.Cluster) *rancher.Container {
+	cs := cl.Spec
 	c := newEtcdContainer(m, initialCluster, clusterName, state, token, dataDir, cs)
+	// add etcd environment variables to every container
+	c.Environment = make(map[string]interface{})
+	for k, v := range cl.Metadata.Labels {
+		if strings.HasPrefix(k, "ETCD_") {
+			c.Environment[k] = v
+		}
+	}
 	if cs.Pod != nil {
 		if cs.Pod.AntiAffinity {
 			ContainerWithAntiAffinity(c, clusterName)

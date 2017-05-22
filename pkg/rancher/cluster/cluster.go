@@ -385,7 +385,7 @@ func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, stat
 		token = uuid.New()
 	}
 
-	container := ranchutil.NewEtcdContainer(m, members.PeerURLPairs(), c.cluster.Metadata.Name, state, token, c.cluster.Spec)
+	container := ranchutil.NewEtcdContainer(m, members.PeerURLPairs(), c.cluster.Metadata.Name, state, token, c.cluster)
 	if needRecovery {
 		backupAddr := ranchutil.BackupServiceAddr(c.cluster.Metadata.Labels["serviceName"], c.cluster.Metadata.Labels["stackName"])
 		ranchutil.ContainerWithRestoreCommand(container, backupAddr, token, c.cluster.Spec.Version, m)
