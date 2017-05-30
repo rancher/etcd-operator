@@ -25,7 +25,6 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	rancher "github.com/rancher/go-rancher/v2"
-	"golang.org/x/net/context"
 )
 
 // reconcile reconciles cluster current state to desired state specified by spec.
@@ -126,19 +125,13 @@ func (c *Cluster) addOneMember() error {
 	defer etcdcli.Close()
 
 	newMember := &etcdutil.Member{Name: c.CreateMemberName(), Namespace: c.cluster.Metadata.Namespace, Provider: "rancher"}
-	ctx, _ := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerAddr()})
-	if err != nil {
-		c.logger.Errorf("fail to add new member (%s): %v", newMember.Name, err)
-		return err
-	}
-	newMember.ID = resp.Member.ID
 	c.members.Add(newMember)
 
 	if err := c.createPod(c.members, newMember, "existing", false, false); err != nil {
 		c.logger.Errorf("fail to create member (%s): %v", newMember.Name, err)
 		return err
 	}
+
 	c.memberCounter++
 	c.logger.Infof("added member (%s)", newMember.Name)
 	return nil

@@ -397,6 +397,10 @@ func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, stat
 		ranchutil.DeleteLocalVolumesByName(c.getClient(), container.Name)
 	}
 
+	if c.members.Size() > 0 {
+		ranchutil.ContainerWithAddMemberCommand(container, c.members.ClientURLs(), m.Name, []string{m.PeerAddr()}, c.cluster.Spec)
+	}
+
 	c2, err := c.getClient().Container.Create(container)
 	if err != nil {
 		return err
