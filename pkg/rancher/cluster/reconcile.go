@@ -100,7 +100,8 @@ func (c *Cluster) resize() error {
 		return nil
 	}
 
-	if c.members.Size() < c.cluster.Spec.Size {
+	// scale of -1 interpreted as global
+	if c.members.Size() < c.cluster.Spec.Size || c.cluster.Spec.Size == -1 {
 		if c.cluster.Spec.SelfHosted != nil {
 			return c.addOneSelfHostedMember()
 		}

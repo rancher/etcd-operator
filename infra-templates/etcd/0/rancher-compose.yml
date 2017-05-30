@@ -5,7 +5,7 @@
   questions:
   - variable: SIZE
     label: Size
-    description: Number of Etcd members to create
+    description: Number of Etcd members to create. Set to -1 to schedule globally (MUST ENFORCE ANTI-AFFINITY)
     required: true
     default: 3
     type: int
