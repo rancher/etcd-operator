@@ -57,11 +57,6 @@
     description: A comma-delimited list of label k-v pairs that a candidate node/host must have
     required: false
     type: string
-  # - variable: SELF_HOSTED
-  #   label: Self-Hosted
-  #   description: Run etcd without cattle infrastructure services
-  #   default: false
-  #   type: boolean
   - variable: NETWORK
     label: Network Mode
     description: The Docker Network to connect containers to (host, ipsec, bridge, etc.)
@@ -77,15 +72,6 @@
     description: Periodically create backups. Enables automatic disaster recovery except for self-hosted clusters.
     default: true
     type: boolean
-  # - variable: STORAGE_TYPE
-  #   label: Storage Type
-  #   description: Type of storage device to store backup files. 
-  #   required: true
-  #   default: PersistentVolume
-  #   type: enum
-  #   options:
-  #   - PersistentVolume
-  #   - S3
   - variable: STORAGE_DRIVER
     label: Storage Driver
     description: If using PersistentVolume storage type, specify the driver to use.
@@ -95,12 +81,6 @@
     options:
     - rancher-efs
     - rancher-nfs
-  # - variable: STORAGE_SIZE
-  #   label: Persistent Volume Size
-  #   description: The size in megabytes (MB) of the persistent volume to claim for backups
-  #   required: false
-  #   default: 1024
-  #   type: int
   - variable: BACKUP_INTERVAL
     label: Backup Interval
     description: The interval between two backups.
