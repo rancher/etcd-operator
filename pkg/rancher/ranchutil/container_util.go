@@ -30,8 +30,7 @@ func etcdContainer(commands, version string) rancher.Container {
 		Labels: map[string]interface{}{
 			"io.rancher.container.dns": "true",
 		},
-		Ports:         []string{"2379", "2380"},
-		RestartPolicy: &rancher.RestartPolicy{Name: "never"},
+		Ports: []string{"2379", "2380"},
 	}
 }
 
@@ -120,6 +119,7 @@ func NewEtcdContainer(m *etcdutil.Member, initialCluster []string, clusterName, 
 			c.Environment[k] = v
 		}
 	}
+	c.Environment["ETCDCTL_API"] = "3"
 	if cs.Pod != nil {
 		if cs.Pod.AntiAffinity {
 			ContainerWithAntiAffinity(c, clusterName)

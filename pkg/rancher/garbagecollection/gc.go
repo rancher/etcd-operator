@@ -1,6 +1,7 @@
 package garbagecollection
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -87,7 +88,6 @@ func (gc *GC) FullyCollect() error {
 			defer wg.Done()
 			envId := c.AccountId
 			ranchutil.SetResourceContext(&c.Resource, envId)
-			// TODO we should delete container/volume independent of eachother
 			if err := gc.collectContainer(&c); err == nil {
 				gc.collectVolumesByName(envId, c.Name)
 			}
@@ -186,7 +186,11 @@ func (gc *GC) getClusters() (map[string]bool, error) {
 
 	clusters := make(map[string]bool)
 	for _, c := range services {
-		clusters[c.Id] = true
+		for _, selector := range strings.Split(c.SelectorContainer, ",") {
+			if x := strings.Split(selector, "="); len(x) == 2 && x[0] == "cluster" {
+				clusters[x[1]] = true
+			}
+		}
 	}
 	return clusters, nil
 }

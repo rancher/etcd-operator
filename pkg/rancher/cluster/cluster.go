@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -396,19 +397,44 @@ func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, stat
 		ranchutil.DeleteLocalVolumesByName(c.getClient(), container.Name)
 	}
 
-	_, err := c.getClient().Container.Create(container)
+	c2, err := c.getClient().Container.Create(container)
+	if err != nil {
+		return err
+	}
+
+	// We get no real meaningful information back with our create container API call
+	// watch Rancher container resource to determine true container outcome
+	for {
+		time.Sleep(3 * time.Second)
+		c2, err = c.getClient().Container.ById(c2.Id)
+		if err != nil {
+			return err
+		}
+		switch c2.State {
+		case "running":
+			return nil
+		case "stopped":
+			fallthrough
+		case "error":
+			_ = c.getClient().Container.Delete(c2)
+			return errors.New(fmt.Sprintf("container error: %s", c2.TransitioningMessage))
+		}
+	}
 	return err
 }
 
 func (c *Cluster) removeContainer(name string) error {
-	// Listing by name doesn't work, pull all containers and filter
-	coll, err := c.getClient().Container.List(&rancher.ListOpts{})
+	coll, err := c.getClient().Container.List(&rancher.ListOpts{
+		Filters: map[string]interface{}{
+			"name": name,
+		},
+	})
 	if err != nil {
 		return err
 	}
 	for _, n := range coll.Data {
-		if n.Name == name {
-			return c.getClient().Container.Delete(&n)
+		if err = c.getClient().Container.Delete(&n); err != nil {
+			return err
 		}
 	}
 	return fmt.Errorf("container not found: %s", name)
