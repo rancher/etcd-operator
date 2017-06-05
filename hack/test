@@ -29,6 +29,7 @@ function fmt_pass {
 		fi
 	done
 
+
 	echo "Checking govet..."
 	for file in $allfiles; do
 		checkRes=$(go vet $file)
@@ -37,32 +38,6 @@ function fmt_pass {
 			exit 255
 		fi
 	done
-
-	checkPkgs=$(go list ./client/... ./cmd/... ./pkg/... ./test/e2e/...)
-	
-	go get honnef.co/go/tools/cmd/gosimple || true
-	if which gosimple >/dev/null; then
-		echo "Checking gosimple..."
-		checkRes=$(gosimple $checkPkgs) || true
-		if [ -n "${checkRes}" ]; then
-			echo -e "gosimple checking failed:\n${checkRes}"
-			exit 255
-		fi
-	else
-		echo "Skipping gosimple: failed to install"
-	fi
-
-	go get honnef.co/go/tools/cmd/unused || true
-	if which unused >/dev/null; then
-		echo "Checking unused..."
-		checkRes=$(unused $checkPkgs) || true
-		if [ -n "${checkRes}" ]; then
-				echo -e "unused checking failed:\n${checkRes}"
-				exit 255
-		fi
-	else
-		echo "Skipping unused: failed to install"
-	fi
 }
 
 function build_pass {
@@ -84,16 +59,10 @@ function e2e_pass {
 		fi
 	fi
 
+	TEST_PKGS=`go list ./test/e2e/... | grep -v framework`
 	# Run all the tests by default
 	E2E_TEST_SELECTOR=${E2E_TEST_SELECTOR:-.*}
-	go test "./test/e2e/" -run "$E2E_TEST_SELECTOR" -timeout 30m --race --kubeconfig $KUBECONFIG --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
-}
-
-function upgrade_pass {
-	go test ./test/e2e/upgradetest/ --kubeconfig=$KUBECONFIG --kube-ns=$TEST_NAMESPACE \
-		--old-image=$UPGRADE_FROM \
-		--new-image=$UPGRADE_TO
-
+	go test ${TEST_PKGS} -run "$E2E_TEST_SELECTOR" -timeout 30m --race --kubeconfig $KUBECONFIG --operator-image $OPERATOR_IMAGE --namespace ${TEST_NAMESPACE}
 }
 
 function unit_pass {

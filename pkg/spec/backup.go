@@ -27,9 +27,6 @@ const (
 var errPVZeroSize = errors.New("PV backup should not have 0 size volume")
 
 type BackupPolicy struct {
-	// Pod defines the policy to create the backup pod.
-	Pod *PodPolicy `json:"pod,omitempty"`
-
 	// StorageType specifies the type of storage device to store backup files.
 	// If it's not set by user, the default is "PersistentVolume".
 	StorageType BackupStorageType `json:"storageType"`
@@ -71,6 +68,8 @@ type PVSource struct {
 	// purpose.
 	// If the snapshot size is larger than the size specified, backup fails.
 	VolumeSizeInMB int `json:"volumeSizeInMB"`
+	// VolumeType specifies the type of persistent volume. This is the driver name.
+	VolumeType string
 }
 
 type S3Source struct {

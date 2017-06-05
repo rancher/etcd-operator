@@ -67,10 +67,10 @@ func (fb *fileBackend) save(version string, snapRev int64, rc io.Reader) (int64,
 	return n, nil
 }
 
-func (fb *fileBackend) getLatest() (string, error) {
+func (fb *fileBackend) getLatest() (string, io.ReadCloser, error) {
 	files, err := ioutil.ReadDir(fb.dir)
 	if err != nil {
-		return "", fmt.Errorf("failed to list dir (%s): error (%v)", fb.dir, err)
+		return "", nil, fmt.Errorf("failed to list dir (%s): error (%v)", fb.dir, err)
 	}
 
 	var names []string
@@ -80,13 +80,10 @@ func (fb *fileBackend) getLatest() (string, error) {
 
 	fn := getLatestBackupName(names)
 	if fn == "" {
-		return "", nil
+		return "", nil, nil
 	}
-	return fn, err
-}
-
-func (fb *fileBackend) open(name string) (io.ReadCloser, error) {
-	return os.Open(filepath.Join(fb.dir, name))
+	f, err := os.Open(path.Join(fb.dir, fn))
+	return fn, f, err
 }
 
 func (fb *fileBackend) purge(maxBackupFiles int) error {

@@ -62,17 +62,19 @@ func (sb *s3Backend) save(version string, snapRev int64, rc io.Reader) (int64, e
 	return n, nil
 }
 
-func (sb *s3Backend) getLatest() (string, error) {
+func (sb *s3Backend) getLatest() (string, io.ReadCloser, error) {
 	keys, err := sb.S3.List()
 	if err != nil {
-		return "", fmt.Errorf("failed to list s3 bucket: %v", err)
+		return "", nil, fmt.Errorf("failed to list s3 bucket: %v", err)
 	}
 
-	return getLatestBackupName(keys), nil
-}
+	key := getLatestBackupName(keys)
+	if key == "" {
+		return "", nil, nil
+	}
+	rc, err := sb.S3.Get(key)
 
-func (sb *s3Backend) open(name string) (io.ReadCloser, error) {
-	return sb.S3.Get(name)
+	return key, rc, err
 }
 
 func (sb *s3Backend) purge(maxBackupFiles int) error {

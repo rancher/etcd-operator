@@ -18,10 +18,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/pkg/api/meta/metatypes"
+	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -44,23 +46,40 @@ func TPRName() string {
 }
 
 type Cluster struct {
-	metav1.TypeMeta `json:",inline"`
-	Metadata        metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec            ClusterSpec       `json:"spec"`
-	Status          ClusterStatus     `json:"status"`
+	unversioned.TypeMeta `json:",inline"`
+	Metadata             v1.ObjectMeta `json:"metadata,omitempty"`
+	Spec                 ClusterSpec   `json:"spec"`
+	Status               ClusterStatus `json:"status"`
 }
 
-func (c *Cluster) AsOwner() metav1.OwnerReference {
+func (c Cluster) Equals(o Cluster) bool {
+	if &c != &o && (c.Metadata.Name != o.Metadata.Name ||
+		!reflect.DeepEqual(c.Spec, o.Spec)) {
+		return false
+	}
+	return true
+}
+
+func (c *Cluster) AsOwner() metatypes.OwnerReference {
 	trueVar := true
 	// TODO: In 1.6 this is gonna be "k8s.io/kubernetes/pkg/apis/meta/v1"
 	// Both api.OwnerReference and metatypes.OwnerReference are combined into that.
-	return metav1.OwnerReference{
+	return metatypes.OwnerReference{
 		APIVersion: c.APIVersion,
 		Kind:       c.Kind,
 		Name:       c.Metadata.Name,
 		UID:        c.Metadata.UID,
 		Controller: &trueVar,
 	}
+}
+
+// VolumeName returns a name unique to the cluster which will be used for storing backups
+func (c *Cluster) VolumeName() string {
+	return fmt.Sprintf("%s-%s", c.Metadata.Labels["serviceName"], c.Metadata.Labels["serviceId"])
+}
+
+func (c *Cluster) Name() string {
+	return fmt.Sprintf("%s-%s", c.Metadata.Labels["stackName"], c.Metadata.Labels["serviceName"])
 }
 
 type ClusterSpec struct {
@@ -83,7 +102,10 @@ type ClusterSpec struct {
 	// Paused is to pause the control of the operator for the etcd cluster.
 	Paused bool `json:"paused,omitempty"`
 
-	// Pod defines the policy to create pod for the etcd pod.
+	// Network is the name of the Docker network to connect containers to.
+	Network string `json:"network"`
+
+	// Pod defines the policy to create pod for the etcd container.
 	Pod *PodPolicy `json:"pod,omitempty"`
 
 	// Backup defines the policy to backup data of etcd cluster if not nil.
@@ -99,7 +121,6 @@ type ClusterSpec struct {
 	// Kubernetes cluster.
 	SelfHosted *SelfHostedPolicy `json:"selfHosted,omitempty"`
 
-	// NOTE: This field is half finished. It will be ignored.
 	// etcd cluster TLS configuration
 	TLS *TLSPolicy `json:"TLS,omitempty"`
 }
@@ -116,12 +137,6 @@ type RestorePolicy struct {
 
 // PodPolicy defines the policy to create pod for the etcd container.
 type PodPolicy struct {
-	// Labels specifies the labels to attach to pods the operator creates for the
-	// etcd cluster.
-	// "app" and "etcd_*" labels are reserved for the internal use of the etcd operator.
-	// Do not overwrite them.
-	Labels map[string]string `json:"labels,omitempty"`
-
 	// NodeSelector specifies a map of key-value pairs. For the pod to be eligible
 	// to run on a node, the node must have each of the indicated key-value pairs as
 	// labels.
@@ -134,16 +149,6 @@ type PodPolicy struct {
 	// Resources is the resource requirements for the etcd container.
 	// This field cannot be updated once the cluster is created.
 	Resources v1.ResourceRequirements `json:"resources"`
-
-	// Tolerations specifies the pod's tolerations.
-	Tolerations []v1.Toleration `json:"tolerations"`
-
-	// List of environment variables to set in the etcd container.
-	// This is used to configure etcd process. etcd cluster cannot be created, when
-	// bad environement variables are provided. Do not overwrite any flags used to
-	// bootstrap the cluster (for example `--initial-cluster` flag).
-	// This field cannot be updated.
-	EtcdEnv []v1.EnvVar `json:"etcdEnv"`
 }
 
 func (c *ClusterSpec) Validate() error {
@@ -158,19 +163,6 @@ func (c *ClusterSpec) Validate() error {
 	if c.Backup != nil {
 		if err := c.Backup.Validate(); err != nil {
 			return err
-		}
-	}
-	if c.TLS != nil {
-		if err := c.TLS.Validate(); err != nil {
-			return err
-		}
-	}
-
-	if c.Pod != nil {
-		for k := range c.Pod.Labels {
-			if k == "app" || strings.HasPrefix(k, "etcd_") {
-				return errors.New("spec: pod labels contains reserved label")
-			}
 		}
 	}
 	return nil

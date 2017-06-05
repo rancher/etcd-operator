@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"strings"
 
 	"github.com/coreos/etcd-operator/pkg/backup/env"
 
@@ -57,7 +58,7 @@ func New(bucket, prefix string, option session.Options) (*S3, error) {
 
 	s := &S3{
 		client: client,
-		prefix: prefix,
+		prefix: strings.Trim(prefix, "/"),
 		bucket: bucket,
 	}
 	return s, nil
@@ -70,7 +71,11 @@ func (s *S3) Put(key string, rs io.ReadSeeker) error {
 		Body:   rs,
 	})
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *S3) Get(key string) (io.ReadCloser, error) {
@@ -91,7 +96,11 @@ func (s *S3) Delete(key string) error {
 		Key:    aws.String(path.Join(v1, s.prefix, key)),
 	})
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *S3) List() ([]string, error) {

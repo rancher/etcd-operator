@@ -36,13 +36,17 @@ type Member struct {
 	PeerURLs []string
 	// ClientURLs is only used for self-hosted setup.
 	ClientURLs []string
-
-	SecurePeer   bool
-	SecureClient bool
+	// orchestration provider (kubernetes, rancher)
+	Provider string
 }
 
 func (m *Member) fqdn() string {
-	return fmt.Sprintf("%s.%s.%s.svc.cluster.local", m.Name, clusterNameFromMemberName(m.Name), m.Namespace)
+	switch m.Provider {
+	case "rancher":
+		return fmt.Sprintf("%s.rancher.internal", m.Name)
+	default:
+		return fmt.Sprintf("%s.%s.%s.svc.cluster.local", m.Name, clusterNameFromMemberName(m.Name), m.Namespace)
+	}
 }
 
 func (m *Member) ClientAddr() string {
@@ -50,36 +54,15 @@ func (m *Member) ClientAddr() string {
 		return strings.Join(m.ClientURLs, ",")
 	}
 
-	return fmt.Sprintf("%s://%s:2379", m.clientScheme(), m.fqdn())
+	return fmt.Sprintf("http://%s:2379", m.fqdn())
 }
 
-func (m *Member) clientScheme() string {
-	if m.SecureClient {
-		return "https"
-	}
-	return "http"
-}
-
-func (m *Member) peerScheme() string {
-	if m.SecurePeer {
-		return "https"
-	}
-	return "http"
-}
-
-func (m *Member) ListenClientURL() string {
-	return fmt.Sprintf("%s://0.0.0.0:2379", m.clientScheme())
-}
-func (m *Member) ListenPeerURL() string {
-	return fmt.Sprintf("%s://0.0.0.0:2380", m.peerScheme())
-}
-
-func (m *Member) PeerURL() string {
+func (m *Member) PeerAddr() string {
 	if len(m.PeerURLs) != 0 {
 		return strings.Join(m.PeerURLs, ",")
 	}
 
-	return fmt.Sprintf("%s://%s:2380", m.peerScheme(), m.fqdn())
+	return fmt.Sprintf("http://%s:2380", m.fqdn())
 }
 
 type MemberSet map[string]*Member
@@ -140,7 +123,7 @@ func (ms MemberSet) PickOne() *Member {
 func (ms MemberSet) PeerURLPairs() []string {
 	ps := make([]string, 0)
 	for _, m := range ms {
-		ps = append(ps, fmt.Sprintf("%s=%s", m.Name, m.PeerURL()))
+		ps = append(ps, fmt.Sprintf("%s=%s", m.Name, m.PeerAddr()))
 	}
 	return ps
 }

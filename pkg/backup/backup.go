@@ -15,7 +15,7 @@
 package backup
 
 import (
-	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -28,14 +28,11 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/coreos/etcd/clientv3"
 	"golang.org/x/net/context"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 const (
@@ -44,14 +41,16 @@ const (
 	maxRecentBackupStatusCount = 10
 )
 
-type Backup struct {
-	kclient kubernetes.Interface
+type Snapshot interface {
+	Save(lastSnapRevision int64) (*etcdutil.Member, int64)
+}
 
-	clusterName   string
-	namespace     string
-	policy        spec.BackupPolicy
-	listenAddr    string
-	etcdTLSConfig *tls.Config
+type Backup struct {
+	snapshot Snapshot
+
+	clusterName string
+	policy      spec.BackupPolicy
+	listenAddr  string
 
 	be backend
 
@@ -61,73 +60,51 @@ type Backup struct {
 	recentBackupsStatus []backupapi.BackupStatus
 }
 
-func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSpec, listenAddr string) (*Backup, error) {
+func New(snapshot Snapshot, clusterName string, policy spec.BackupPolicy, listenAddr string) *Backup {
 	bdir := path.Join(constants.BackupMountDir, PVBackupV1, clusterName)
 	// We created not only backup dir and but also tmp dir under it.
 	// tmp dir is used to store intermediate snapshot files.
 	// It will be no-op if target dir existed.
 	tmpDir := path.Join(bdir, backupTmpDir)
-	err := os.MkdirAll(tmpDir, 0700)
-	if err != nil {
-		return nil, err
+	if err := os.MkdirAll(tmpDir, 0700); err != nil {
+		panic(err)
 	}
 
 	var be backend
-	switch sp.Backup.StorageType {
+	switch policy.StorageType {
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 		be = &fileBackend{dir: bdir}
 	case spec.BackupStorageTypeS3:
-		prefix := ns + "/" + clusterName
+		prefix := clusterName + "/"
 		s3cli, err := s3.New(os.Getenv(env.AWSS3Bucket), prefix, session.Options{
 			SharedConfigState: session.SharedConfigEnable,
 		})
 		if err != nil {
-			return nil, err
+			panic(err)
 		}
-
-		// for backward compatibility.
-		err = s3cli.CopyPrefix(clusterName)
-		if err != nil {
-			return nil, err
-		}
-
 		be = &s3Backend{
 			dir: tmpDir,
 			S3:  s3cli,
 		}
 	default:
-		return nil, fmt.Errorf("unsupported storage type: %v", sp.Backup.StorageType)
-	}
-
-	var tc *tls.Config
-	if sp.TLS.IsSecureClient() {
-		d, err := k8sutil.GetTLSDataFromSecret(kclient, ns, sp.TLS.Static.OperatorSecret)
-		if err != nil {
-			return nil, err
-		}
-		tc, err = etcdutil.NewTLSConfig(d.CertData, d.KeyData, d.CAData)
-		if err != nil {
-			return nil, err
-		}
+		logrus.Fatalf("unsupported storage type: %v", policy.StorageType)
 	}
 
 	return &Backup{
-		kclient:       kclient,
-		clusterName:   clusterName,
-		namespace:     ns,
-		policy:        *sp.Backup,
-		listenAddr:    listenAddr,
-		be:            be,
-		etcdTLSConfig: tc,
+		snapshot:    snapshot,
+		clusterName: clusterName,
+		policy:      policy,
+		listenAddr:  listenAddr,
+		be:          be,
 
 		backupNow: make(chan chan error),
-	}, nil
+	}
 }
 
 func (b *Backup) Run() {
 	go b.startHTTP()
 
-	lastSnapRev := b.getLatestBackupRev()
+	lastSnapRev := int64(0)
 	interval := constants.DefaultSnapshotInterval
 	if b.policy.BackupIntervalInSecond != 0 {
 		interval = time.Duration(b.policy.BackupIntervalInSecond) * time.Second
@@ -151,11 +128,19 @@ func (b *Backup) Run() {
 			logrus.Info("received a backup request")
 		}
 
-		rev, err := b.saveSnap(lastSnapRev)
-		if err != nil {
-			logrus.Errorf("failed to save snapshot: %v", err)
+		member, rev := b.snapshot.Save(lastSnapRev)
+		if rev <= lastSnapRev {
+			logrus.Info("skipped creating new backup: no change since last time")
+			continue
 		}
-		lastSnapRev = rev
+
+		logrus.Infof("saving backup for cluster (%s)", b.clusterName)
+		err := b.write(member, rev)
+		if err != nil {
+			logrus.Errorf("write snapshot failed: %v", err)
+		} else {
+			lastSnapRev = rev
+		}
 
 		if ackchan != nil {
 			ackchan <- err
@@ -163,51 +148,12 @@ func (b *Backup) Run() {
 	}
 }
 
-func (b *Backup) saveSnap(lastSnapRev int64) (int64, error) {
-	podList, err := b.kclient.Core().Pods(b.namespace).List(k8sutil.ClusterListOpt(b.clusterName))
-	if err != nil {
-		return lastSnapRev, err
-	}
-
-	var pods []*v1.Pod
-	for i := range podList.Items {
-		pod := &podList.Items[i]
-		if pod.Status.Phase == v1.PodRunning {
-			pods = append(pods, pod)
-		}
-	}
-
-	if len(pods) == 0 {
-		msg := "no running etcd pods found"
-		logrus.Warning(msg)
-		return lastSnapRev, fmt.Errorf(msg)
-	}
-	member, rev := getMemberWithMaxRev(pods, b.etcdTLSConfig)
-	if member == nil {
-		logrus.Warning("no reachable member")
-		return lastSnapRev, fmt.Errorf("no reachable member")
-	}
-
-	if rev <= lastSnapRev {
-		logrus.Info("skipped creating new backup: no change since last time")
-		return lastSnapRev, nil
-	}
-
-	log.Printf("saving backup for cluster (%s)", b.clusterName)
-	if err := b.writeSnap(member, rev); err != nil {
-		err = fmt.Errorf("write snapshot failed: %v", err)
-		return lastSnapRev, err
-	}
-	return rev, nil
-}
-
-func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
+func (b *Backup) write(m *etcdutil.Member, rev int64) error {
 	start := time.Now()
 
 	cfg := clientv3.Config{
 		Endpoints:   []string{m.ClientAddr()},
 		DialTimeout: constants.DefaultDialTimeout,
-		TLS:         b.etcdTLSConfig,
 	}
 	etcdcli, err := clientv3.New(cfg)
 	if err != nil {
@@ -248,57 +194,10 @@ func (b *Backup) writeSnap(m *etcdutil.Member, rev int64) error {
 
 	return nil
 }
-
-func getMemberWithMaxRev(pods []*v1.Pod, tc *tls.Config) (*etcdutil.Member, int64) {
-	var member *etcdutil.Member
-	maxRev := int64(0)
-	for _, pod := range pods {
-		m := &etcdutil.Member{
-			Name:         pod.Name,
-			Namespace:    pod.Namespace,
-			SecureClient: tc != nil,
-		}
-		cfg := clientv3.Config{
-			Endpoints:   []string{m.ClientAddr()},
-			DialTimeout: constants.DefaultDialTimeout,
-			TLS:         tc,
-		}
-		etcdcli, err := clientv3.New(cfg)
-		if err != nil {
-			logrus.Warningf("failed to create etcd client for pod (%v): %v", pod.Name, err)
-			continue
-		}
-		defer etcdcli.Close()
-
-		ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
-		resp, err := etcdcli.Get(ctx, "/", clientv3.WithSerializable())
-		cancel()
-		if err != nil {
-			logrus.Warningf("getMaxRev: failed to get revision from member %s (%s)", m.Name, m.ClientAddr())
-			continue
-		}
-
-		logrus.Infof("getMaxRev: member %s revision (%d)", m.Name, resp.Header.Revision)
-		if resp.Header.Revision > maxRev {
-			maxRev = resp.Header.Revision
-			member = m
-		}
+func ParsePolicy(policy string) *spec.BackupPolicy {
+	p := &spec.BackupPolicy{}
+	if err := json.Unmarshal([]byte(policy), p); err != nil {
+		log.Fatalf("fail to parse backup policy (%s): %v", policy, err)
 	}
-	return member, maxRev
-}
-
-func (b *Backup) getLatestBackupRev() int64 {
-	// If there is any error, we just exit backup sidecar because we can't serve the backup any way.
-	name, err := b.be.getLatest()
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	if len(name) == 0 {
-		return 0
-	}
-	rev, err := getRev(name)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	return rev
+	return p
 }

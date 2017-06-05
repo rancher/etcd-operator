@@ -14,8 +14,6 @@
 
 package spec
 
-import "errors"
-
 // TLSPolicy defines the TLS policy of an etcd cluster
 type TLSPolicy struct {
 	// StaticTLS enables user to generate static x509 certificates and keys,
@@ -24,48 +22,8 @@ type TLSPolicy struct {
 }
 
 type StaticTLS struct {
-	// Member contains secrets containing TLS certs used by each etcd member pod.
-	Member *MemberSecret `json:"member"`
-	// OperatorSecret is the secret containing TLS certs used by operator to
-	// talk securely to this cluster.
-	OperatorSecret string `json:"operatorSecret"`
-}
-
-type MemberSecret struct {
-	// PeerSecret is the secret containing TLS certs used by each etcd member pod
-	// for the communication between etcd peers.
-	PeerSecret string `json:"peerSecret"`
-	// ClientSecret is the secret containing TLS certs used by each etcd member pod
-	// for the communication between etcd and its clients.
-	ClientSecret string `json:"clientSecret"`
-}
-
-func (tp *TLSPolicy) Validate() error {
-	if tp.Static == nil {
-		return nil
-	}
-	st := tp.Static
-
-	if len(st.OperatorSecret) != 0 {
-		if len(st.Member.ClientSecret) == 0 {
-			return errors.New("operator secret set but member clientSecret not set")
-		}
-	} else if st.Member != nil && len(st.Member.ClientSecret) != 0 {
-		return errors.New("member clientSecret set but operator secret not set")
-	}
-	return nil
-}
-
-func (tp *TLSPolicy) IsSecureClient() bool {
-	if tp == nil || tp.Static == nil {
-		return false
-	}
-	return len(tp.Static.OperatorSecret) != 0
-}
-
-func (tp *TLSPolicy) IsSecurePeer() bool {
-	if tp == nil || tp.Static == nil || tp.Static.Member == nil {
-		return false
-	}
-	return len(tp.Static.Member.PeerSecret) != 0
+	// ServerSecretName contains peer-interface and client-interface server x509 key/cert, along with peer and client CA cert.
+	ServerSecretName string `json:"serverSecretName"`
+	// ClientSecretName contains etcd client key/cert, along with client CA cert.
+	ClientSecretName string `json:"clientSecretName"`
 }

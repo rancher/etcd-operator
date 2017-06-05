@@ -44,15 +44,11 @@ func TestFileBackendGetLatest(t *testing.T) {
 		}
 	}
 
-	name, err := fb.getLatest()
+	name, rc, err := fb.getLatest()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	rc, err := fb.open(name)
-	if err != nil {
-		t.Fatal(err)
-	}
 	defer rc.Close()
 
 	if name != makeBackupName("3.0.3", 19) {

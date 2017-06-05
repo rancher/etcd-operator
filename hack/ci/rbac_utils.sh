@@ -3,8 +3,8 @@
 : ${TEST_NAMESPACE:?"Need to set TEST_NAMESPACE"}
 
 function rbac_cleanup {
-    kubectl delete clusterrolebinding "etcd-operator-${TEST_NAMESPACE}"
-    kubectl delete clusterrole "etcd-operator-${TEST_NAMESPACE}"
+	kubectl delete clusterrolebinding etcd-operator
+	kubectl delete clusterrole etcd-operator
 }
 
 function rbac_setup() {
@@ -13,7 +13,7 @@ function rbac_setup() {
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
 metadata:
-  name: "etcd-operator-${TEST_NAMESPACE}"
+  name: etcd-operator
 rules:
 - apiGroups:
   - etcd.coreos.com
@@ -43,9 +43,9 @@ rules:
   verbs:
   - "*"
 - apiGroups:
-  - apps
+  - extensions
   resources:
-  - deployments
+  - replicasets
   verbs:
   - "*"
 - apiGroups:
@@ -62,11 +62,11 @@ EOF
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
-  name: "etcd-operator-${TEST_NAMESPACE}"
+  name: etcd-operator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: "etcd-operator-${TEST_NAMESPACE}"
+  name: etcd-operator
 subjects:
 - kind: ServiceAccount
   name: default

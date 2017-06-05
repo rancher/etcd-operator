@@ -17,15 +17,15 @@ package spec
 import (
 	"encoding/json"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/pkg/api/unversioned"
 )
 
 // ClusterList is a list of etcd clusters.
 type ClusterList struct {
-	metav1.TypeMeta `json:",inline"`
+	unversioned.TypeMeta `json:",inline"`
 	// Standard list metadata
 	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
-	Metadata metav1.ListMeta `json:"metadata,omitempty"`
+	Metadata unversioned.ListMeta `json:"metadata,omitempty"`
 	// Items is a list of third party objects
 	Items []Cluster `json:"items"`
 }
