@@ -68,6 +68,8 @@ type PVSource struct {
 	// purpose.
 	// If the snapshot size is larger than the size specified, backup fails.
 	VolumeSizeInMB int `json:"volumeSizeInMB"`
+	// VolumeType specifies the type of persistent volume. This is the driver name.
+	VolumeType string
 }
 
 type S3Source struct {

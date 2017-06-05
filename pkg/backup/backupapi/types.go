@@ -19,7 +19,7 @@ type ServiceStatus struct {
 	// the backup service
 	RecentBackup *BackupStatus `json:"recentBackup,omitempty"`
 
-	// Backups is the totoal number of existing backups.
+	// Backups is the total number of existing backups.
 	Backups int `json:"backups"`
 
 	// BackupSize is the total size of existing backups in MB.

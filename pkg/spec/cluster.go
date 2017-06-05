@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -51,6 +52,14 @@ type Cluster struct {
 	Status               ClusterStatus `json:"status"`
 }
 
+func (c Cluster) Equals(o Cluster) bool {
+	if &c != &o && (c.Metadata.Name != o.Metadata.Name ||
+		!reflect.DeepEqual(c.Spec, o.Spec)) {
+		return false
+	}
+	return true
+}
+
 func (c *Cluster) AsOwner() metatypes.OwnerReference {
 	trueVar := true
 	// TODO: In 1.6 this is gonna be "k8s.io/kubernetes/pkg/apis/meta/v1"
@@ -62,6 +71,15 @@ func (c *Cluster) AsOwner() metatypes.OwnerReference {
 		UID:        c.Metadata.UID,
 		Controller: &trueVar,
 	}
+}
+
+// VolumeName returns a name unique to the cluster which will be used for storing backups
+func (c *Cluster) VolumeName() string {
+	return fmt.Sprintf("%s-%s", c.Metadata.Labels["serviceName"], c.Metadata.Labels["serviceId"])
+}
+
+func (c *Cluster) Name() string {
+	return fmt.Sprintf("%s-%s", c.Metadata.Labels["stackName"], c.Metadata.Labels["serviceName"])
 }
 
 type ClusterSpec struct {
@@ -83,6 +101,9 @@ type ClusterSpec struct {
 
 	// Paused is to pause the control of the operator for the etcd cluster.
 	Paused bool `json:"paused,omitempty"`
+
+	// Network is the name of the Docker network to connect containers to.
+	Network string `json:"network"`
 
 	// Pod defines the policy to create pod for the etcd container.
 	Pod *PodPolicy `json:"pod,omitempty"`

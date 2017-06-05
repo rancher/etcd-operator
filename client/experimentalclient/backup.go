@@ -9,7 +9,7 @@ import (
 	"path"
 
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil"
 )
 
 type Backup interface {

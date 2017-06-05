@@ -6,7 +6,7 @@ import (
 
 	"github.com/coreos/etcd-operator/pkg/spec"
 
-	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/coreos/etcd-operator/pkg/k8s/k8sutil"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
