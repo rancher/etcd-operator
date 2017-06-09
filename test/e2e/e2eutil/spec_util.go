@@ -75,8 +75,3 @@ func ClusterWithVersion(cl *spec.Cluster, version string) *spec.Cluster {
 	cl.Spec.Version = version
 	return cl
 }
-
-func ClusterWithSelfHosted(cl *spec.Cluster, sh *spec.SelfHostedPolicy) *spec.Cluster {
-	cl.Spec.SelfHosted = sh
-	return cl
-}

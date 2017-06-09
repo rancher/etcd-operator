@@ -23,7 +23,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/analytics"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/cluster"
 	"github.com/coreos/etcd-operator/pkg/spec"
@@ -180,7 +179,6 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 		c.clusters[clus.Metadata.Name] = nc
 		c.clusterRVs[clus.Metadata.Name] = clus.Metadata.ResourceVersion
 
-		analytics.ClusterCreated()
 		clustersCreated.Inc()
 		clustersTotal.Inc()
 
@@ -199,7 +197,6 @@ func (c *Controller) handleClusterEvent(event *Event) error {
 		c.clusters[clus.Metadata.Name].Delete()
 		delete(c.clusters, clus.Metadata.Name)
 		delete(c.clusterRVs, clus.Metadata.Name)
-		analytics.ClusterDeleted()
 		clustersDeleted.Inc()
 		clustersTotal.Dec()
 	}

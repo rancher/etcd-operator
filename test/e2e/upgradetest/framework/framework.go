@@ -56,7 +56,7 @@ func New(fc Config) (*Framework, error) {
 }
 
 func (f *Framework) CreateOperator() error {
-	cmd := []string{"/usr/local/bin/etcd-operator", "--analytics=false"}
+	cmd := []string{"/usr/local/bin/etcd-operator"}
 	name := "etcd-operator"
 	image := f.OldImage
 	selector := map[string]string{"name": "etcd-operator"}

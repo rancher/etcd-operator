@@ -15,10 +15,6 @@
 package cluster
 
 import (
-	"fmt"
-	"strings"
-
-	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 
 	"k8s.io/client-go/pkg/api/v1"
@@ -32,29 +28,10 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	members := etcdutil.MemberSet{}
 	for _, m := range resp.Members {
 		var name string
-		if c.cluster.Spec.SelfHosted != nil {
-			name = m.Name
-			if len(name) == 0 || len(m.ClientURLs) == 0 {
-				c.logger.Errorf("member peerURL (%s): %v", m.PeerURLs[0], errUnexpectedUnreadyMember)
-				return errUnexpectedUnreadyMember
-			}
-
-			curl := m.ClientURLs[0]
-			bcurl := c.cluster.Spec.SelfHosted.BootMemberClientEndpoint
-			if curl == bcurl {
-				return fmt.Errorf("skipping update members for self hosted cluster: waiting for the boot member (%s) to be removed...", m.Name)
-			}
-
-			if !strings.HasPrefix(m.Name, c.cluster.Metadata.GetName()) {
-				c.logger.Errorf("member %s does not belong to this cluster.", m.Name)
-				return errInvalidMemberName
-			}
-		} else {
-			name, err = etcdutil.MemberNameFromPeerURL(m.PeerURLs[0])
-			if err != nil {
-				c.logger.Errorf("invalid member peerURL (%s): %v", m.PeerURLs[0], err)
-				return errInvalidMemberName
-			}
+		name, err = etcdutil.MemberNameFromPeerURL(m.PeerURLs[0])
+		if err != nil {
+			c.logger.Errorf("invalid member peerURL (%s): %v", m.PeerURLs[0], err)
+			return errInvalidMemberName
 		}
 		ct, err := etcdutil.GetCounterFromMemberName(name)
 		if err != nil {
@@ -79,14 +56,10 @@ func (c *Cluster) updateMembers(known etcdutil.MemberSet) error {
 	return nil
 }
 
-func podsToMemberSet(pods []*v1.Pod, selfHosted *spec.SelfHostedPolicy, sc bool) etcdutil.MemberSet {
+func podsToMemberSet(pods []*v1.Pod, sc bool) etcdutil.MemberSet {
 	members := etcdutil.MemberSet{}
 	for _, pod := range pods {
 		m := &etcdutil.Member{Name: pod.Name, Namespace: pod.Namespace, SecureClient: sc}
-		if selfHosted != nil {
-			m.ClientURLs = []string{"http://" + pod.Status.PodIP + ":2379"}
-			m.PeerURLs = []string{"http://" + pod.Status.PodIP + ":2380"}
-		}
 		members.Add(m)
 	}
 	return members

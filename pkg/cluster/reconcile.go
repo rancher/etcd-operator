@@ -15,8 +15,6 @@
 package cluster
 
 import (
-	"errors"
-
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
@@ -40,7 +38,7 @@ func (c *Cluster) reconcile(pods []*v1.Pod) error {
 	}()
 
 	sp := c.cluster.Spec
-	running := podsToMemberSet(pods, c.cluster.Spec.SelfHosted, c.isSecureClient())
+	running := podsToMemberSet(pods, c.isSecureClient())
 	if !running.IsEqual(c.members) || c.members.Size() != sp.Size {
 		return c.reconcileMembers(running)
 	}
@@ -102,10 +100,6 @@ func (c *Cluster) resize() error {
 	}
 
 	if c.members.Size() < c.cluster.Spec.Size {
-		if c.cluster.Spec.SelfHosted != nil {
-			return c.addOneSelfHostedMember()
-		}
-
 		return c.addOneMember()
 	}
 
@@ -185,10 +179,6 @@ func (c *Cluster) removeMember(toRemove *etcdutil.Member) error {
 
 func (c *Cluster) disasterRecovery(left etcdutil.MemberSet) error {
 	c.status.AppendRecoveringCondition()
-
-	if c.cluster.Spec.SelfHosted != nil {
-		return errors.New("self-hosted cluster cannot be recovered from disaster")
-	}
 
 	if c.cluster.Spec.Backup == nil {
 		c.logger.Errorf("fail to do disaster recovery: no backup policy has been defined.")

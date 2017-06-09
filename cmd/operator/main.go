@@ -23,7 +23,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/coreos/etcd-operator/pkg/analytics"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/chaos"
 	"github.com/coreos/etcd-operator/pkg/controller"
@@ -45,14 +44,13 @@ import (
 )
 
 var (
-	analyticsEnabled bool
-	pvProvisioner    string
-	namespace        string
-	name             string
-	awsSecret        string
-	awsConfig        string
-	s3Bucket         string
-	gcInterval       time.Duration
+	pvProvisioner string
+	namespace     string
+	name          string
+	awsSecret     string
+	awsConfig     string
+	s3Bucket      string
+	gcInterval    time.Duration
 
 	chaosLevel int
 
@@ -66,8 +64,6 @@ var (
 )
 
 func init() {
-	flag.BoolVar(&analyticsEnabled, "analytics", true, "Send analytical event (Cluster Created/Deleted etc.) to Google Analytics")
-
 	flag.StringVar(&pvProvisioner, "pv-provisioner", constants.PVProvisionerGCEPD, "persistent volume provisioner type")
 	flag.StringVar(&awsSecret, "backup-aws-secret", "",
 		"The name of the kube secret object that stores the AWS credential file. The file name must be 'credentials'.")
@@ -122,12 +118,6 @@ func main() {
 	logrus.Infof("Git SHA: %s", version.GitSHA)
 	logrus.Infof("Go Version: %s", runtime.Version())
 	logrus.Infof("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH)
-
-	if analyticsEnabled {
-		analytics.Enable()
-	}
-
-	analytics.OperatorStarted()
 
 	id, err := os.Hostname()
 	if err != nil {
