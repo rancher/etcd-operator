@@ -25,8 +25,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -165,7 +163,7 @@ func waitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.Cluster, storag
 	if err != nil {
 		return fmt.Errorf("failed to wait backup pod terminated: %v", err)
 	}
-	// The rest is to track backup storage, e.g. PV or S3 "dir" deleted.
+	// The rest is to track backup storage, e.g. PV "dir" deleted.
 	// If CleanupBackupsOnClusterDelete=false, we don't delete them and thus don't check them.
 	if !cl.Spec.Backup.CleanupBackupsOnClusterDelete {
 		return nil
@@ -178,17 +176,6 @@ func waitBackupDeleted(kubeClient kubernetes.Interface, cl *spec.Cluster, storag
 				return false, err
 			}
 			if len(pl.Items) > 0 {
-				return false, nil
-			}
-		case spec.BackupStorageTypeS3:
-			resp, err := storageCheckerOptions.S3Cli.ListObjects(&s3.ListObjectsInput{
-				Bucket: aws.String(storageCheckerOptions.S3Bucket),
-				Prefix: aws.String(path.Join("v1", cl.Metadata.Namespace, cl.Metadata.Name) + "/"),
-			})
-			if err != nil {
-				return false, err
-			}
-			if len(resp.Contents) > 0 {
 				return false, nil
 			}
 		}

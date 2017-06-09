@@ -89,11 +89,6 @@ func testBackupStatus(t *testing.T) {
 		switch testEtcd.Spec.Backup.StorageType {
 		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 			storageCheckerOptions = &e2eutil.StorageCheckerOptions{}
-		case spec.BackupStorageTypeS3:
-			storageCheckerOptions = &e2eutil.StorageCheckerOptions{
-				S3Cli:    f.S3Cli,
-				S3Bucket: f.S3Bucket,
-			}
 		}
 
 		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {

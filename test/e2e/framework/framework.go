@@ -24,8 +24,6 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
@@ -42,8 +40,6 @@ type Framework struct {
 	opImage    string
 	KubeClient kubernetes.Interface
 	Namespace  string
-	S3Cli      *s3.S3
-	S3Bucket   string
 }
 
 // Setup setups a test framework and points "Global" to it.
@@ -86,11 +82,6 @@ func (f *Framework) setup() error {
 		return err
 	}
 	logrus.Info("etcd operator created successfully")
-	if os.Getenv("AWS_TEST_ENABLED") == "true" {
-		if err := f.setupAWS(); err != nil {
-			return fmt.Errorf("fail to setup aws: %v", err)
-		}
-	}
 	logrus.Info("e2e setup successfully")
 	return nil
 }
@@ -98,9 +89,6 @@ func (f *Framework) setup() error {
 func (f *Framework) SetupEtcdOperator() error {
 	// TODO: unify this and the yaml file in example/
 	cmd := []string{"/usr/local/bin/etcd-operator"}
-	if os.Getenv("AWS_TEST_ENABLED") == "true" {
-		cmd = append(cmd, "--backup-aws-secret=aws", "--backup-aws-config=aws", "--backup-s3-bucket=jenkins-etcd-operator")
-	}
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "etcd-operator",
@@ -164,22 +152,4 @@ func (f *Framework) DeleteEtcdOperatorCompletely() error {
 
 func (f *Framework) deleteEtcdOperator() error {
 	return f.KubeClient.CoreV1().Pods(f.Namespace).Delete("etcd-operator", metav1.NewDeleteOptions(1))
-}
-
-func (f *Framework) setupAWS() error {
-	if err := os.Setenv("AWS_SHARED_CREDENTIALS_FILE", os.Getenv("AWS_CREDENTIAL")); err != nil {
-		return err
-	}
-	if err := os.Setenv("AWS_CONFIG_FILE", os.Getenv("AWS_CONFIG")); err != nil {
-		return err
-	}
-	sess, err := session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	})
-	if err != nil {
-		return err
-	}
-	f.S3Cli = s3.New(sess)
-	f.S3Bucket = "jenkins-etcd-operator"
-	return nil
 }

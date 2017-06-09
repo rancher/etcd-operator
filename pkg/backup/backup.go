@@ -23,15 +23,12 @@ import (
 	"time"
 
 	"github.com/coreos/etcd-operator/pkg/backup/backupapi"
-	"github.com/coreos/etcd-operator/pkg/backup/env"
-	"github.com/coreos/etcd-operator/pkg/backup/s3"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/coreos/etcd/clientv3"
 	"golang.org/x/net/context"
 	"k8s.io/client-go/kubernetes"
@@ -76,25 +73,6 @@ func New(kclient kubernetes.Interface, clusterName, ns string, sp spec.ClusterSp
 	switch sp.Backup.StorageType {
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 		be = &fileBackend{dir: bdir}
-	case spec.BackupStorageTypeS3:
-		prefix := ns + "/" + clusterName
-		s3cli, err := s3.New(os.Getenv(env.AWSS3Bucket), prefix, session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		// for backward compatibility.
-		err = s3cli.CopyPrefix(clusterName)
-		if err != nil {
-			return nil, err
-		}
-
-		be = &s3Backend{
-			dir: tmpDir,
-			S3:  s3cli,
-		}
 	default:
 		return nil, fmt.Errorf("unsupported storage type: %v", sp.Backup.StorageType)
 	}

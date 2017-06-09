@@ -33,16 +33,6 @@ func TestFailureRecovery(t *testing.T) {
 	})
 }
 
-func TestS3DisasterRecovery(t *testing.T) {
-	if os.Getenv("AWS_TEST_ENABLED") != "true" {
-		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
-	}
-	t.Run("disaster recovery on S3", func(t *testing.T) {
-		t.Run("2 members (majority) down", testS3MajorityDown)
-		t.Run("3 members (all) down", testS3AllDown)
-	})
-}
-
 func testOneMemberRecovery(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
@@ -113,11 +103,6 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 		switch testEtcd.Spec.Backup.StorageType {
 		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 			storageCheckerOptions = &e2eutil.StorageCheckerOptions{}
-		case spec.BackupStorageTypeS3:
-			storageCheckerOptions = &e2eutil.StorageCheckerOptions{
-				S3Cli:    f.S3Cli,
-				S3Bucket: f.S3Bucket,
-			}
 		}
 
 		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
@@ -155,23 +140,4 @@ func testDisasterRecoveryWithBackupPolicy(t *testing.T, numToKill int, backupPol
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 	// TODO: add checking of data in etcd
-}
-
-func testS3MajorityDown(t *testing.T) {
-	if os.Getenv(envParallelTest) == envParallelTestTrue {
-		t.Parallel()
-	}
-
-	testDisasterRecoveryWithBackupPolicy(t, 2, e2eutil.NewS3BackupPolicy())
-}
-
-func testS3AllDown(t *testing.T) {
-	if os.Getenv(framework.EnvCloudProvider) == "aws" {
-		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
-	}
-	if os.Getenv(envParallelTest) == envParallelTestTrue {
-		t.Parallel()
-	}
-
-	testDisasterRecoveryWithBackupPolicy(t, 3, e2eutil.NewS3BackupPolicy())
 }

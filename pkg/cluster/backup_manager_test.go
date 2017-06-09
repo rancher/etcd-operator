@@ -42,20 +42,3 @@ func TestNewBackupManagerWithNonePVProvisioner(t *testing.T) {
 		t.Errorf("expect err=%v, get=%v", errNoPVForBackup, err)
 	}
 }
-
-func TestNewBackupManagerWithoutS3Config(t *testing.T) {
-	cfg := Config{}
-	cl := &spec.Cluster{
-		Metadata: metav1.ObjectMeta{Name: "testing"},
-		Spec: spec.ClusterSpec{
-			Backup: &spec.BackupPolicy{
-				StorageType: spec.BackupStorageTypeS3,
-				MaxBackups:  1,
-			},
-		},
-	}
-	_, err := newBackupManager(cfg, cl, nil)
-	if err != errNoS3ConfigForBackup {
-		t.Errorf("expect err=%v, get=%v", errNoS3ConfigForBackup, err)
-	}
-}

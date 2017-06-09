@@ -42,8 +42,7 @@ const (
 )
 
 var (
-	errNoPVForBackup       = errors.New("no backup could be created due to PVProvisioner (none) is set")
-	errNoS3ConfigForBackup = errors.New("no backup could be created due to S3 configuration not set")
+	errNoPVForBackup = errors.New("no backup could be created due to PVProvisioner (none) is set")
 )
 
 type backupManager struct {
@@ -84,11 +83,6 @@ func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
 			return nil, errNoPVForBackup
 		}
 		s, err = backupstorage.NewPVStorage(c.KubeCli, cl.Metadata.Name, cl.Metadata.Namespace, c.PVProvisioner, *b)
-	case spec.BackupStorageTypeS3:
-		if len(c.S3Context.AWSConfig) == 0 {
-			return nil, errNoS3ConfigForBackup
-		}
-		s, err = backupstorage.NewS3Storage(c.S3Context, c.KubeCli, cl.Metadata.Name, cl.Metadata.Namespace, *b)
 	}
 	return s, err
 }
@@ -135,8 +129,6 @@ func (bm *backupManager) createSidecarDeployment() error {
 	switch cl.Spec.Backup.StorageType {
 	case spec.BackupStorageTypeDefault, spec.BackupStorageTypePersistentVolume:
 		k8sutil.PodSpecWithPV(&podTemplate.Spec, cl.Metadata.Name)
-	case spec.BackupStorageTypeS3:
-		k8sutil.PodSpecWithS3(&podTemplate.Spec, c.S3Context)
 	}
 
 	name := k8sutil.BackupSidecarName(cl.Metadata.Name)

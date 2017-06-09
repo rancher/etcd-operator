@@ -40,21 +40,6 @@ func TestClusterRestore(t *testing.T) {
 	})
 }
 
-func TestClusterRestoreS3(t *testing.T) {
-	if os.Getenv(framework.EnvCloudProvider) == "aws" {
-		t.Skip("skipping test due to relying on PodIP reachability. TODO: Remove this skip later")
-	}
-
-	if os.Getenv("AWS_TEST_ENABLED") != "true" {
-		t.Skip("skipping test since AWS_TEST_ENABLED is not set.")
-	}
-
-	t.Run("restore cluster from backup on S3", func(t *testing.T) {
-		t.Run("restore from the same name cluster", testClusterRestoreS3SameName)
-		t.Run("restore from a different name cluster", testClusterRestoreS3DifferentName)
-	})
-}
-
 func testClusterRestoreSameName(t *testing.T) {
 	if os.Getenv(envParallelTest) == envParallelTestTrue {
 		t.Parallel()
@@ -107,11 +92,6 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 	switch testEtcd.Spec.Backup.StorageType {
 	case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 		storageCheckerOptions = &e2eutil.StorageCheckerOptions{}
-	case spec.BackupStorageTypeS3:
-		storageCheckerOptions = &e2eutil.StorageCheckerOptions{
-			S3Cli:    f.S3Cli,
-			S3Bucket: f.S3Bucket,
-		}
 	}
 	if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
 		t.Fatal(err)
@@ -145,11 +125,6 @@ func testClusterRestoreWithBackupPolicy(t *testing.T, needDataClone bool, backup
 		switch testEtcd.Spec.Backup.StorageType {
 		case spec.BackupStorageTypePersistentVolume, spec.BackupStorageTypeDefault:
 			storageCheckerOptions = &e2eutil.StorageCheckerOptions{}
-		case spec.BackupStorageTypeS3:
-			storageCheckerOptions = &e2eutil.StorageCheckerOptions{
-				S3Cli:    f.S3Cli,
-				S3Bucket: f.S3Bucket,
-			}
 		}
 		if err := e2eutil.DeleteCluster(t, f.KubeClient, testEtcd, storageCheckerOptions); err != nil {
 			t.Fatal(err)
@@ -209,20 +184,4 @@ func calculateRestoreWaitTime(needDataClone bool) time.Duration {
 		waitTime += 60 * time.Second
 	}
 	return waitTime
-}
-
-func testClusterRestoreS3SameName(t *testing.T) {
-	if os.Getenv(envParallelTest) == envParallelTestTrue {
-		t.Parallel()
-	}
-
-	testClusterRestoreWithBackupPolicy(t, false, e2eutil.NewS3BackupPolicy())
-}
-
-func testClusterRestoreS3DifferentName(t *testing.T) {
-	if os.Getenv(envParallelTest) == envParallelTestTrue {
-		t.Parallel()
-	}
-
-	testClusterRestoreWithBackupPolicy(t, true, e2eutil.NewS3BackupPolicy())
 }

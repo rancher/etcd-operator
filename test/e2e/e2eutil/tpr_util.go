@@ -22,14 +22,8 @@ import (
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
 
-	"github.com/aws/aws-sdk-go/service/s3"
 	"k8s.io/client-go/kubernetes"
 )
-
-type StorageCheckerOptions struct {
-	S3Cli    *s3.S3
-	S3Bucket string
-}
 
 func CreateCluster(t *testing.T, kubeClient kubernetes.Interface, namespace string, cl *spec.Cluster) (*spec.Cluster, error) {
 	uri := fmt.Sprintf("/apis/%s/%s/namespaces/%s/clusters", spec.TPRGroup, spec.TPRVersion, namespace)

@@ -37,17 +37,6 @@ func NewCluster(genName string, size int) *spec.Cluster {
 	}
 }
 
-func NewS3BackupPolicy() *spec.BackupPolicy {
-	return &spec.BackupPolicy{
-		BackupIntervalInSecond: 60 * 60,
-		MaxBackups:             5,
-		StorageType:            spec.BackupStorageTypeS3,
-		StorageSource: spec.StorageSource{
-			S3: &spec.S3Source{},
-		},
-	}
-}
-
 func NewPVBackupPolicy() *spec.BackupPolicy {
 	return &spec.BackupPolicy{
 		BackupIntervalInSecond: 60 * 60,

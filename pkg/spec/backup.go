@@ -21,7 +21,6 @@ type BackupStorageType string
 const (
 	BackupStorageTypeDefault          = ""
 	BackupStorageTypePersistentVolume = "PersistentVolume"
-	BackupStorageTypeS3               = "S3"
 )
 
 var errPVZeroSize = errors.New("PV backup should not have 0 size volume")
@@ -62,7 +61,6 @@ func (bp *BackupPolicy) Validate() error {
 
 type StorageSource struct {
 	PV *PVSource `json:"pv,omitempty"`
-	S3 *S3Source `json:"s3,omitempty"`
 }
 
 type PVSource struct {
@@ -71,9 +69,6 @@ type PVSource struct {
 	// purpose.
 	// If the snapshot size is larger than the size specified, backup fails.
 	VolumeSizeInMB int `json:"volumeSizeInMB"`
-}
-
-type S3Source struct {
 }
 
 type BackupServiceStatus struct {
